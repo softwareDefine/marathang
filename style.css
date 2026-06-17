@@ -421,6 +421,94 @@ html, body {
   line-height: 1.6;
 }
 
+/* 검색 + 필터 버튼 한 줄 */
+.searchbar { display: flex; gap: 8px; align-items: center; }
+.searchbar .search { flex: 1; }
+.filter-btn {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+.filter-btn:hover,
+.filter-btn.is-active { border-color: var(--accent); color: var(--accent); }
+.filter-btn svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; fill: none; }
+
+/* 필터 팝업 (필터 아이콘으로 토글) */
+.filter-panel {
+  position: absolute;
+  z-index: 30;
+  top: 132px;
+  left: 16px;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--float-bg);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--float-shadow);
+}
+.filter-panel[hidden] { display: none; } /* [hidden] + display:flex 충돌 방지 */
+.filter-panel__head { display: flex; align-items: center; justify-content: space-between; }
+.filter-panel__title { font-size: 14px; font-weight: 700; color: var(--text); }
+.filters__row { display: flex; flex-direction: column; gap: 6px; }
+.filters__label { font-size: 12px; color: var(--muted); }
+.filters__val { color: var(--text); font-weight: 600; }
+.filters__none { font-size: 12px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+.chip:hover { color: var(--text); }
+.chip.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.range { display: flex; flex-direction: column; gap: 2px; }
+.filters input[type="range"] { width: 100%; accent-color: var(--accent); }
+.filters__dates { display: flex; align-items: center; gap: 6px; }
+.filters__tilde { color: var(--muted); }
+.filters__date {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+}
+.filters__reset {
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.filters__reset:hover { border-color: var(--accent); }
+
 .course-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .course-item[hidden] { display: none; }
 

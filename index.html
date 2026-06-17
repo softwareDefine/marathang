@@ -33,18 +33,64 @@
         </div>
         <button id="theme-toggle" class="theme-toggle" type="button" aria-label="테마 전환"></button>
       </div>
-      <div class="search">
-        <svg class="search__icon" viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="11" cy="11" r="7" />
-          <line x1="20.5" y1="20.5" x2="16.5" y2="16.5" />
-        </svg>
-        <input
-          id="search-input"
-          class="search__input"
-          type="search"
-          placeholder="코스 검색"
-          autocomplete="off"
-        />
+      <div class="searchbar">
+        <div class="search">
+          <svg class="search__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <line x1="20.5" y1="20.5" x2="16.5" y2="16.5" />
+          </svg>
+          <input
+            id="search-input"
+            class="search__input"
+            type="search"
+            placeholder="코스 검색"
+            autocomplete="off"
+          />
+        </div>
+        <button id="filter-toggle" class="filter-btn" type="button" aria-label="필터" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <line x1="4" y1="7" x2="20" y2="7" />
+            <line x1="7" y1="12" x2="17" y2="12" />
+            <line x1="10" y1="17" x2="14" y2="17" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 필터 팝업 (필터 아이콘으로 토글) -->
+    <div id="filter-panel" class="filter-panel" hidden>
+      <div class="filter-panel__head">
+        <span class="filter-panel__title">필터</span>
+        <button type="button" class="filters__reset" id="filter-reset">초기화</button>
+      </div>
+      <div class="filters__row">
+        <span class="filters__label">지역</span>
+        <div class="chips" id="filter-regions"></div>
+      </div>
+      <div class="filters__row">
+        <div class="filters__label">거리 <span id="dist-label" class="filters__val">전체</span></div>
+        <input type="range" id="dist-max" min="0" max="40" step="1" value="40" />
+      </div>
+      <div class="filters__row">
+        <div class="filters__label">참가비 <span id="fee-label" class="filters__val">무제한</span></div>
+        <input type="range" id="fee-max" min="0" max="100000" step="5000" value="100000" />
+      </div>
+      <div class="filters__row">
+        <span class="filters__label">규모</span>
+        <div class="chips" id="filter-scale">
+          <button type="button" class="chip is-on" data-scale="all">전체</button>
+          <button type="button" class="chip" data-scale="s">~1천</button>
+          <button type="button" class="chip" data-scale="m">1천~5천</button>
+          <button type="button" class="chip" data-scale="l">5천+</button>
+        </div>
+      </div>
+      <div class="filters__row">
+        <span class="filters__label">날짜</span>
+        <div class="filters__dates">
+          <input type="date" id="date-from" class="filters__date" />
+          <span class="filters__tilde">~</span>
+          <input type="date" id="date-to" class="filters__date" />
+        </div>
       </div>
     </div>
 

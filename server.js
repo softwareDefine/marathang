@@ -91,12 +91,15 @@ function normalizeCourse(input) {
   variants = variants.map(normalizeVariant);
   if (!variants.length) throw new Error("variants가 비어 있음");
 
+  const scaleNum = Number(input.scale);
   return {
     id: input.id ? String(input.id) : slugify(name),
     name,
     date: String(input.date || "").trim(),
     place: String(input.place || "").trim(),
+    region: String(input.region || "").trim(),
     fee: String(input.fee || "").trim(),
+    scale: Number.isFinite(scaleNum) && scaleNum > 0 ? scaleNum : null,
     url: String(input.url || "#").trim() || "#",
     variants,
   };

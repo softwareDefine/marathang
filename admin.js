@@ -145,6 +145,7 @@ function addVariantRow(data) {
     '<div class="vrow__top">' +
     '  <input class="field__input vrow__dist" placeholder="거리 (예: 10km)">' +
     '  <input class="field__color vrow__color" type="color" value="' + (data.color || "#E8413A") + '">' +
+    '  <button type="button" class="btn btn--ghost btn--sm vrow__dup" title="이 경로를 복제해 새 거리 추가">복제</button>' +
     '  <button type="button" class="btn btn--danger btn--sm vrow__del">삭제</button>' +
     "</div>" +
     '<div class="vrow__mode">' +
@@ -176,6 +177,11 @@ function addVariantRow(data) {
 
   v.colorEl.addEventListener("input", () => redrawVariant(variants.indexOf(v)));
   v.gpxEl.addEventListener("change", () => { if (v.gpxEl.files[0]) handleGpx(variants.indexOf(v), v.gpxEl.files[0]); });
+  el.querySelector(".vrow__dup").addEventListener("click", () => {
+    // 같은 경로를 복제해 새 거리 행 추가 (5km/10km/하프/풀이 경로 겹칠 때)
+    addVariantRow({ distance: v.distEl.value, color: v.colorEl.value, path: v.path.slice() });
+    fitAll();
+  });
   el.querySelector(".vrow__del").addEventListener("click", () => removeVariant(variants.indexOf(v)));
   el.querySelectorAll('input[type="radio"]').forEach((r) =>
     r.addEventListener("change", () => setMode(variants.indexOf(v), el.querySelector('input[type="radio"]:checked').value))
@@ -310,6 +316,8 @@ function startEdit(id) {
   form.name.value = c.name || "";
   form.date.value = c.date || "";
   form.place.value = c.place || "";
+  form.region.value = c.region || "";
+  form.scale.value = c.scale != null ? c.scale : "";
   form.fee.value = c.fee || "";
   form.url.value = c.url && c.url !== "#" ? c.url : "";
   editingId = id;
@@ -346,6 +354,7 @@ async function submitForm(e) {
   const fd = new FormData(form);
   const ev = {
     name: fd.get("name"), date: fd.get("date"), place: fd.get("place"),
+    region: fd.get("region"), scale: fd.get("scale"),
     fee: fd.get("fee"), url: fd.get("url"), variants: built,
   };
   const res = editingId

@@ -40,6 +40,13 @@ aws s3 rm s3://marathang-data-574748894595 --recursive --profile marathang
 aws s3api delete-bucket --bucket marathang-data-574748894595 --region ap-northeast-2 --profile marathang
 ```
 
+## CI/CD (GitHub Actions)
+- 저장소: https://github.com/softwareDefine/marathang (private)
+- `.github/workflows/deploy.yml` — **`main` 푸시 시** 문법검사 → `aws lambda update-function-code` → 스모크 테스트
+- 인증: GitHub Secrets `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (계정 574748894595의 `marathang` 키)
+- 문서/`template.yaml`/csv만 바뀐 커밋은 배포 생략(`paths-ignore`)
+- 데이터(`courses.json`)는 S3가 source of truth — 코드 배포와 무관(어드민이 S3에 직접 씀)
+
 ## ⚠️ 남은 1가지 (사용자가 해야 함)
 네이버 콘솔 → Maps 인증정보 → **[Web 서비스 URL]** 에 추가해야 지도 타일이 뜸:
 ```

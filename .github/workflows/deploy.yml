@@ -4,6 +4,12 @@ name: Deploy to AWS Lambda
 on:
   push:
     branches: [main]
+    # 문서/IaC 텍스트만 바뀐 커밋은 재배포 생략 (런타임 파일 변경 시에만 배포)
+    paths-ignore:
+      - "**.md"
+      - "template.yaml"
+      - "marathons_2026_with_participants.csv"
+      - ".gitignore"
   workflow_dispatch:
 
 env:

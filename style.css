@@ -1,0 +1,603 @@
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --panel-2: #1f242e;
+  --text: #e8eaed;
+  --muted: #9aa3b2;
+  --line: #2a2f3a;
+  --accent: #E8413A;
+  --float-bg: rgba(23, 26, 33, 0.92);
+  --float-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  --iw-bg: #1f242e;
+  --iw-title: #ffffff;
+  --iw-link: #6aa3ff;
+  --toggle-off: #2a2f3a;
+  --hover: rgba(255, 255, 255, 0.04);
+}
+
+:root[data-theme="light"] {
+  --bg: #eef0f3;
+  --panel: #ffffff;
+  --panel-2: #f1f3f6;
+  --text: #1b1e24;
+  --muted: #6b7280;
+  --line: #e2e5ea;
+  --accent: #E8413A;
+  --float-bg: rgba(255, 255, 255, 0.94);
+  --float-shadow: 0 8px 30px rgba(60, 70, 90, 0.16);
+  --iw-bg: #ffffff;
+  --iw-title: #14161a;
+  --iw-link: #2f6bff;
+  --toggle-off: #cdd2da;
+  --hover: rgba(0, 0, 0, 0.05);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "NanumSquareNeo", -apple-system,
+    "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+
+/* 나눔스퀘어Neo 굵기 매핑 (가변폰트 미지원 → weight별 패밀리) */
+.brand__name { font-family: "NanumSquareNeoHeavy", "NanumSquareNeo", sans-serif; }
+.sidebar__title,
+.iw__title,
+.course-item__name,
+.course-item__dist {
+  font-family: "NanumSquareNeoBold", "NanumSquareNeo", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 헤더·푸터 숨기고 지도를 화면 전체로 */
+.hero, .footer { display: none; }
+
+/* ── 히어로 ── */
+.hero {
+  background:
+    radial-gradient(1200px 400px at 70% -10%, rgba(232, 65, 58, 0.25), transparent 60%),
+    linear-gradient(180deg, #14171d, #0f1115);
+  border-bottom: 1px solid var(--line);
+}
+.hero__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 56px 24px 40px;
+}
+.hero__badge {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffd2cf;
+  background: rgba(232, 65, 58, 0.15);
+  border: 1px solid rgba(232, 65, 58, 0.4);
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+.hero__title {
+  margin: 18px 0 12px;
+  font-size: clamp(28px, 5vw, 46px);
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.hero__sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+/* ── 레이아웃: 화면 전체 ── */
+.layout {
+  position: fixed;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  display: block;
+}
+
+/* ── 상단 바: 로고와 검색을 세로로 나열 ── */
+.topbar {
+  position: absolute;
+  z-index: 11;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+/* 로고 + 테마 토글 한 줄 */
+.topbar__top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 테마 토글 (로고 오른쪽, 아이콘 버튼) */
+.theme-toggle {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--float-bg);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--float-shadow);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.theme-toggle:hover { border-color: var(--accent); }
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* 색깔 아이콘: 해 = 앰버, 달 = 따뜻한 옐로 */
+.theme-toggle .ic-sun { stroke: #fbbf24; }
+.theme-toggle .ic-moon { stroke: #fcd34d; fill: #fcd34d; }
+
+/* 지도 유형 토글 (일반 / 위성) */
+.maptype {
+  position: absolute;
+  z-index: 11;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  height: 44px;
+  background: var(--float-bg);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--float-shadow);
+  overflow: hidden;
+}
+.maptype__btn {
+  padding: 0 14px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.maptype__btn:hover { color: var(--text); }
+.maptype__btn.is-active { color: var(--text); background: var(--panel-2); }
+
+/* 줌 컨트롤 (+/−) */
+.zoom {
+  position: absolute;
+  z-index: 11;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  background: var(--float-bg);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--float-shadow);
+  overflow: hidden;
+}
+.zoom__btn {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.zoom__btn:hover { background: var(--panel-2); }
+.zoom__btn:first-child { border-bottom: 1px solid var(--line); }
+
+/* 도구 (거리재기 / 거리뷰) */
+.tools {
+  position: absolute;
+  z-index: 11;
+  top: 72px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+}
+.tool__btn {
+  height: 40px;
+  padding: 0 14px;
+  background: var(--float-bg);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--float-shadow);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.tool__btn:hover { border-color: var(--accent); }
+.tool__btn.is-active { border-color: var(--accent); color: var(--accent); }
+
+/* 거리 측정 표시 (상단 중앙) */
+.dist-readout {
+  position: absolute;
+  z-index: 11;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  padding: 0 8px 0 16px;
+  background: var(--float-bg);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--float-shadow);
+  font-size: 13px;
+  color: var(--text);
+}
+.dist-readout[hidden] { display: none; }
+.dist-readout__hint { color: var(--muted); }
+.dist-readout__value { font-weight: 700; font-size: 14px; }
+.dist-readout__clear {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dist-readout__clear:hover { border-color: var(--accent); }
+
+/* 거리 측정 점 마커 */
+.dist-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+}
+
+/* 파노라마(거리뷰) 바닥에 깔리는 코스 경로점 */
+.pano-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  opacity: 0.92;
+}
+
+/* 거리뷰 파노라마 패널 (우하단) */
+.pano {
+  position: absolute;
+  z-index: 12;
+  right: 16px;
+  bottom: 16px;
+  width: 440px;
+  height: 290px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: var(--float-shadow);
+}
+.pano__view { width: 100%; height: 100%; background: var(--panel-2); }
+.pano__close {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.pano__close:hover { background: rgba(0, 0, 0, 0.8); }
+
+/* ── 사이드바: 상단 바 아래 떠 있는 패널 ── */
+.sidebar {
+  position: absolute;
+  z-index: 10;
+  top: 140px;
+  left: 16px;
+  width: 320px;
+  max-height: calc(100vh - 156px);
+  overflow-y: auto;
+  background: var(--float-bg);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--float-shadow);
+}
+/* 브랜드 로고 (독립 박스) */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 52px;
+  background: var(--float-bg);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0 16px;
+  box-shadow: var(--float-shadow);
+}
+.brand__name {
+  font-size: 24px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: -0.03em;
+}
+.brand__accent { color: var(--accent); }
+
+/* 검색창 (독립 박스) */
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 320px;
+  height: 52px;
+  background: var(--float-bg);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0 14px;
+  box-shadow: var(--float-shadow);
+}
+.search:focus-within { border-color: var(--accent); }
+.search__icon {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  color: var(--muted);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.search:focus-within .search__icon { color: var(--accent); }
+.search__input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+}
+.search__input::placeholder { color: var(--muted); }
+.search__input::-webkit-search-cancel-button { filter: invert(0.6); }
+.search__empty {
+  margin: 12px 2px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sidebar__title { margin: 0 0 4px; font-size: 18px; }
+.sidebar__hint { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
+.sidebar__note {
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.course-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.course-item[hidden] { display: none; }
+
+/* 대회 카드 */
+.course-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.course-item:hover { border-color: #3a414f; }
+
+/* 카드 헤드(대회명/장소/일정) */
+.course-item__head { padding: 11px 14px 8px; }
+.course-item__name { font-size: 14px; font-weight: 600; line-height: 1.3; }
+.course-item__meta {
+  margin-top: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* 거리별 코스 행 */
+.variant-list { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.variant {
+  --course-color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  transition: opacity 0.15s;
+}
+.variant + .variant { border-top: 1px solid var(--line); }
+.variant.is-off { opacity: 0.45; }
+.variant__label {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.variant__label:hover { color: var(--course-color); }
+.variant__toggle {
+  flex: none;
+  width: 38px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--toggle-off);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.variant__toggle::after {
+  content: "";
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: margin-left 0.15s, background 0.15s;
+}
+.variant.is-on .variant__toggle { background: var(--course-color); border-color: transparent; }
+.variant.is-on .variant__toggle::after { margin-left: 18px; background: #fff; }
+
+/* 스크린리더 전용 (실제 체크박스) */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── 지도 ── */
+.map-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.map { width: 100%; height: 100%; }
+
+/* 다크모드: 일반 지도 타일만 어둡게 (위성사진·마커·코스선·말풍선은 유지) */
+html:not([data-theme="light"]) .map img[src*="/styles/basic/"] {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.95);
+}
+.map-fallback[hidden] { display: none; }
+.map-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 24px;
+  background: var(--panel);
+  color: var(--muted);
+}
+.map-fallback h3 { color: var(--text); margin: 0; }
+.map-fallback code {
+  background: var(--panel-2);
+  padding: 2px 6px;
+  border-radius: 6px;
+  color: #ffd2cf;
+}
+
+/* 인포윈도우 (지도 위, 둥근 말풍선) */
+.iw {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+  min-width: 210px;
+  max-width: 260px;
+  background: var(--iw-bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--float-shadow);
+  overflow: hidden;
+}
+.iw__title {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--iw-title);
+  padding: 12px 14px 10px;
+}
+.iw__rows {
+  padding: 0 14px 12px;
+  display: grid;
+  gap: 5px;
+}
+.iw__row { display: flex; gap: 10px; }
+.iw__label {
+  flex: none;
+  width: 42px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.iw__link {
+  display: block;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  color: var(--iw-link);
+  font-weight: 600;
+  text-decoration: none;
+}
+.iw__link:hover { background: var(--hover); }
+
+/* ── 푸터 ── */
+.footer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ── 반응형: 좁은 화면에선 사이드바 폭만 줄임 ── */
+@media (max-width: 860px) {
+  .sidebar { width: calc(100vw - 32px); max-width: 360px; }
+}

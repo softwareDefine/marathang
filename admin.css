@@ -1,0 +1,239 @@
+/* ────────────────────────────────────────────────────────────────
+   어드민 전용 스타일 (style.css의 테마 변수를 그대로 사용)
+   ──────────────────────────────────────────────────────────────── */
+/* style.css는 풀스크린 지도용으로 html,body에 overflow:hidden을 건다.
+   어드민은 폼이 길어서 페이지 스크롤이 필요 → 여기서 해제 */
+html { height: auto; overflow: auto; }
+body.admin { height: auto; overflow: auto; }
+
+.admin {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "NanumSquareNeo", sans-serif;
+}
+
+/* 로그인 */
+.login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+/* [hidden] + display:grid 충돌 방지 (CLAUDE.md 함정) */
+.login[hidden] { display: none; }
+.login__card {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px;
+  background: var(--float-bg);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--float-shadow);
+}
+.login__tag {
+  font-size: 13px;
+  color: var(--muted);
+  margin-left: 6px;
+}
+.login__error,
+.form-msg--err,
+.gpx-info--err {
+  color: #ef4444;
+}
+.login__error { font-size: 13px; margin: 0; }
+
+/* 레이아웃 */
+.admin__main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.admin__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.admin__head-actions { display: flex; gap: 8px; }
+.admin__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 820px) {
+  .admin__grid { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: var(--float-bg);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px;
+}
+.panel__title {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-family: "NanumSquareNeoBold", sans-serif;
+}
+.panel__count { color: var(--muted); font-weight: normal; }
+
+/* 폼 */
+.form { display: flex; flex-direction: column; gap: 14px; }
+.form__row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field__label { font-size: 12px; color: var(--muted); }
+.field__input {
+  height: 40px;
+  padding: 0 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+}
+.field__input[type="file"] { padding: 8px; height: auto; }
+.field__input:focus { outline: none; border-color: var(--accent); }
+.field--color { max-width: 120px; }
+.field__color {
+  width: 100%;
+  height: 40px;
+  padding: 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.gpx-info {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* 거리별 코스 영역 */
+.variants__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+#variant-rows { display: flex; flex-direction: column; gap: 10px; }
+.vrow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.vrow.is-armed { border-color: var(--accent); }
+.vrow__top { display: flex; align-items: center; gap: 8px; }
+.vrow__top .vrow__dist { flex: 1; }
+.vrow__mode { display: flex; gap: 16px; font-size: 13px; color: var(--muted); }
+.vrow__mode label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.vrow__draw { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.vrow__draw[hidden] { display: none; } /* [hidden]+display:flex 충돌 방지 */
+.vrow__armed { font-size: 12px; color: var(--accent); }
+
+/* 에디터 지도 */
+.editor-map {
+  height: 320px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.editor-hint { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.edit-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+/* 작은 버튼 */
+.btn--sm { height: 30px; padding: 0 10px; font-size: 12px; font-weight: 600; }
+
+.form__actions { display: flex; gap: 8px; }
+.form__actions .btn--primary { flex: 1; }
+.form-msg { margin: 0; font-size: 13px; color: var(--accent); }
+
+/* 버튼 */
+.btn {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn:hover { border-color: var(--accent); }
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.btn--ghost { background: transparent; }
+.btn--danger {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.btn--danger:hover { border-color: #ef4444; color: #ef4444; }
+
+/* 코스 목록 */
+.admin-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.admin-list__empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+.admin-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.admin-row.is-editing { border-color: var(--accent); }
+.admin-row__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+}
+.admin-row__body { flex: 1; min-width: 0; }
+.admin-row__actions { display: flex; gap: 6px; flex: none; }
+.admin-row .btn {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.admin-row__name {
+  font-family: "NanumSquareNeoBold", sans-serif;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+.admin-row__meta {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

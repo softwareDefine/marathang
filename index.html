@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>마라탕 · 2026 마라톤 코스 지도</title>
+  <link rel="stylesheet" href="https://hangeul.pstatic.net/hangeul_static/css/nanum-square-neo.css" />
+  <link rel="stylesheet" href="style.css" />
+  <script>
+    // 새로고침 깜빡임 방지: 저장된 테마를 먼저 적용
+    if (localStorage.getItem("theme") === "light")
+      document.documentElement.setAttribute("data-theme", "light");
+  </script>
+</head>
+<body>
+  <!-- 헤더 -->
+  <header class="hero">
+    <div class="hero__inner">
+      <span class="hero__badge">🏃 2026 마라톤 코스</span>
+      <h1 class="hero__title">한 지도에 겹쳐 보는<br />전국 마라톤 코스</h1>
+      <p class="hero__sub">
+        출발지·거리·일정을 한눈에. 코스를 켜고 끄면서 겹쳐 비교하세요.
+      </p>
+    </div>
+  </header>
+
+  <!-- 본문: 지도 + 사이드바 -->
+  <main class="layout">
+    <div class="topbar">
+      <div class="topbar__top">
+        <div class="brand">
+          <span class="brand__name">mara<span class="brand__accent">thang</span></span>
+        </div>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="테마 전환"></button>
+      </div>
+      <div class="search">
+        <svg class="search__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <line x1="20.5" y1="20.5" x2="16.5" y2="16.5" />
+        </svg>
+        <input
+          id="search-input"
+          class="search__input"
+          type="search"
+          placeholder="코스 검색"
+          autocomplete="off"
+        />
+      </div>
+    </div>
+
+    <div class="maptype">
+      <button class="maptype__btn is-active" type="button" data-type="normal">일반</button>
+      <button class="maptype__btn" type="button" data-type="satellite">위성</button>
+    </div>
+
+    <div class="tools">
+      <button class="tool__btn" type="button" data-tool="distance">거리재기</button>
+      <button class="tool__btn" type="button" data-tool="streetview">거리뷰</button>
+    </div>
+
+    <div id="dist-readout" class="dist-readout" hidden>
+      <span class="dist-readout__hint">지도를 클릭해 경로를 찍으세요</span>
+      <span id="dist-value" class="dist-readout__value">0 m</span>
+      <button id="dist-clear" class="dist-readout__clear" type="button">초기화</button>
+    </div>
+
+    <div id="pano" class="pano" hidden>
+      <button id="pano-close" class="pano__close" type="button" aria-label="거리뷰 닫기">&times;</button>
+      <div id="pano-view" class="pano__view"></div>
+    </div>
+
+    <div class="zoom">
+      <button class="zoom__btn" type="button" data-zoom="in" aria-label="확대">+</button>
+      <button class="zoom__btn" type="button" data-zoom="out" aria-label="축소">&minus;</button>
+    </div>
+
+    <aside class="sidebar">
+      <h2 class="sidebar__title">코스 목록</h2>
+      <ul id="course-list" class="course-list"><!-- JS로 채움 --></ul>
+      <p id="search-empty" class="search__empty" hidden>결과 없음</p>
+      <p class="sidebar__note">
+        경로는 출발지·거리 기반 추정값이며 실제 코스와 다를 수 있습니다.
+      </p>
+    </aside>
+
+    <section class="map-wrap">
+      <div id="map" class="map"></div>
+      <div id="map-fallback" class="map-fallback" hidden>
+        <h3>지도를 불러오지 못했어요</h3>
+        <p>네이버 지도 Client ID가 필요합니다. <code>app.js</code>의
+          <code>NAVER_CLIENT_ID</code> 값을 발급받은 키로 바꿔주세요.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    데이터: marathons_2026_with_participants.csv · 지도: Naver Maps
+  </footer>
+
+  <!-- 데이터 → 앱 순서로 로드 -->
+  <script src="data.js"></script>
+  <!-- 네이버 지도 SDK: Client ID는 app.js에서 동적으로 주입 -->
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# 임시/빌드 산출물
+_*
+*.zip
+node_modules/
+package-lock.json
+.aws-sam/
+*.log
+
+# OS
+Thumbs.db
+.DS_Store

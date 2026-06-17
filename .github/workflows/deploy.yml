@@ -1,0 +1,62 @@
+name: Deploy to AWS Lambda
+
+# main 푸시 시 자동 배포. 수동 실행도 가능(workflow_dispatch).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-northeast-2
+  FUNCTION_NAME: marathang
+  API_BASE: https://m6osvmjoo5.execute-api.ap-northeast-2.amazonaws.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── CI: 문법 검사 ──
+      - name: Syntax check
+        run: |
+          for f in server.js lambda.js app.js admin.js data.js; do
+            node --check "$f" && echo "ok: $f"
+          done
+
+      # ── AWS 자격증명 (GitHub Secrets) ──
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ── 런타임 파일만 zip (루트 배치) ──
+      - name: Package
+        run: |
+          zip -j function.zip \
+            lambda.js server.js \
+            index.html app.js style.css data.js \
+            admin.html admin.js admin.css \
+            courses.json
+          ls -la function.zip
+
+      # ── CD: Lambda 코드 업데이트 ──
+      - name: Deploy to Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name "$FUNCTION_NAME" \
+            --zip-file fileb://function.zip \
+            --region "$AWS_REGION" \
+            --publish
+          aws lambda wait function-updated \
+            --function-name "$FUNCTION_NAME" --region "$AWS_REGION"
+
+      # ── 배포 후 스모크 테스트 ──
+      - name: Smoke test
+        run: |
+          sleep 3
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$API_BASE/api/courses")
+          echo "GET /api/courses -> $code"
+          test "$code" = "200"

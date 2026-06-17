@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>marathang · 어드민</title>
+  <link rel="stylesheet" href="https://hangeul.pstatic.net/hangeul_static/css/nanum-square-neo.css" />
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/admin.css" />
+  <script>
+    if (localStorage.getItem("theme") === "light")
+      document.documentElement.setAttribute("data-theme", "light");
+  </script>
+</head>
+<body class="admin">
+  <!-- 로그인 게이트 -->
+  <div id="login" class="login">
+    <form id="login-form" class="login__card">
+      <div class="brand"><span class="brand__name">mara<span class="brand__accent">thang</span></span> <span class="login__tag">어드민</span></div>
+      <input id="login-pw" class="field__input" type="password" placeholder="비밀번호" autocomplete="current-password" />
+      <button class="btn btn--primary" type="submit">로그인</button>
+      <p id="login-error" class="login__error" hidden>비밀번호가 올바르지 않습니다.</p>
+    </form>
+  </div>
+
+  <!-- 어드민 본문 -->
+  <main id="app" class="admin__main" hidden>
+    <header class="admin__head">
+      <div class="brand"><span class="brand__name">mara<span class="brand__accent">thang</span></span> <span class="login__tag">어드민</span></div>
+      <div class="admin__head-actions">
+        <a class="btn btn--ghost" href="/" target="_blank" rel="noopener">지도 보기</a>
+        <button id="logout" class="btn btn--ghost" type="button">로그아웃</button>
+      </div>
+    </header>
+
+    <div class="admin__grid">
+      <!-- 추가 폼 -->
+      <section class="panel">
+        <h2 id="form-title" class="panel__title">마라톤 추가</h2>
+        <form id="course-form" class="form">
+          <label class="field">
+            <span class="field__label">대회명 *</span>
+            <input name="name" class="field__input" required placeholder="2026 ○○ 마라톤" />
+          </label>
+          <label class="field">
+            <span class="field__label">장소</span>
+            <input name="place" class="field__input" placeholder="출발지" />
+          </label>
+          <div class="form__row">
+            <label class="field">
+              <span class="field__label">일정</span>
+              <input name="date" class="field__input" type="date" />
+            </label>
+            <label class="field">
+              <span class="field__label">경로 점 간격(m)</span>
+              <input id="step" class="field__input" type="number" min="5" step="5" value="30" />
+            </label>
+          </div>
+          <div class="form__row">
+            <label class="field">
+              <span class="field__label">참가비</span>
+              <input name="fee" class="field__input" placeholder="10km 50,000원" />
+            </label>
+            <label class="field">
+              <span class="field__label">공식 URL</span>
+              <input name="url" class="field__input" placeholder="https://" />
+            </label>
+          </div>
+
+          <div class="variants">
+            <div class="variants__head">
+              <span class="field__label">거리별 코스</span>
+              <button id="add-variant" class="btn btn--ghost btn--sm" type="button">+ 거리 추가</button>
+            </div>
+            <div id="variant-rows"></div>
+          </div>
+
+          <div class="field">
+            <span class="field__label">지도 (그리기 / 미리보기)</span>
+            <div id="editor-map" class="editor-map"></div>
+            <p class="editor-hint">‘지도에서 그리기’를 켠 거리 행을 고른 뒤 지도를 클릭해 경로를 찍으세요.</p>
+          </div>
+
+          <div class="form__actions">
+            <button id="submit-btn" class="btn btn--primary" type="submit">코스 추가</button>
+            <button id="cancel-edit" class="btn btn--ghost" type="button" hidden>취소</button>
+          </div>
+          <p id="form-msg" class="form-msg" hidden></p>
+        </form>
+      </section>
+
+      <!-- 기존 코스 목록 -->
+      <section class="panel">
+        <h2 class="panel__title">등록된 코스 <span id="count" class="panel__count"></span></h2>
+        <ul id="list" class="admin-list"></ul>
+      </section>
+    </div>
+  </main>
+
+  <script src="/admin.js"></script>
+</body>
+</html>

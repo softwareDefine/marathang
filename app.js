@@ -1,0 +1,612 @@
+// ────────────────────────────────────────────────────────────────
+// 네이버 지도 + 마라톤 코스 오버레이
+// ────────────────────────────────────────────────────────────────
+
+// 🔑 네이버 클라우드 플랫폼에서 발급받은 Maps 키로 교체하세요.
+//    https://console.ncloud.com → AI·NAVER API / Maps → 인증 정보(Client ID)
+//    그리고 [Web 서비스 URL]에 이 페이지 도메인(예: http://localhost:5500)을 등록.
+//    ※ 신규 콘솔 키는 ncpKeyId, 구버전 키는 ncpClientId 파라미터를 씁니다.
+const NAVER_CLIENT_ID = "22szac44wv";
+
+// 네이버 SDK를 동적으로 로드 (키 교체만 하면 되도록)
+function loadNaverSdk() {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src =
+      "https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=" +
+      NAVER_CLIENT_ID +
+      "&submodules=panorama";
+    script.onload = () => {
+      if (window.naver && window.naver.maps) {
+        resolve();
+      } else {
+        reject(new Error("naver 객체 없음"));
+      }
+    };
+    script.onerror = () => reject(new Error("SDK 로드 실패"));
+    document.head.appendChild(script);
+  });
+}
+
+function showFallback() {
+  document.getElementById("map").style.display = "none";
+  document.getElementById("map-fallback").hidden = false;
+}
+
+// 정규화된 대회 목록 (initMap 등에서 사용)
+//   각 대회: { id, name, date, place, fee, url, variants:[{vid, distance, color, start, path}] }
+let EVENTS = [];
+
+// 서버/data.js의 원본을 정규화. 구모델(평면 path/distance/color)도 variant 1개로 감싼다.
+function normalizeEvents(list) {
+  return (Array.isArray(list) ? list : []).map((e) => {
+    const id = e.id || e.name || "event";
+    const rawVariants = Array.isArray(e.variants)
+      ? e.variants
+      : [{ distance: e.distance, color: e.color, start: e.start, path: e.path }];
+    const variants = rawVariants
+      .map((v, i) => ({
+        vid: id + "#" + i,
+        distance: v.distance || "",
+        color: /^#[0-9a-fA-F]{6}$/.test(v.color) ? v.color : "#E8413A",
+        path: Array.isArray(v.path) ? v.path : [],
+        start:
+          Array.isArray(v.start) && v.start.length === 2
+            ? v.start
+            : (Array.isArray(v.path) && v.path[0]) || [37.54, 126.99],
+      }))
+      .filter((v) => v.path.length >= 2);
+    return {
+      id,
+      name: e.name || "",
+      date: e.date || "",
+      place: e.place || "",
+      fee: e.fee || "",
+      url: e.url || "#",
+      variants,
+    };
+  });
+}
+
+// 지도 + 코스 그리기
+function initMap() {
+  const naver = window.naver;
+  const container = document.getElementById("map");
+
+  const map = new naver.maps.Map(container, {
+    center: new naver.maps.LatLng(37.5400, 126.9900), // 서울 한강 부근
+    zoom: 9,
+    // 네이버 기본 컨트롤은 끄고 커스텀 UI로 통일 (setupMapControls)
+    zoomControl: false,
+    mapTypeControl: false,
+  });
+
+  // 거리별 코스(variant) 단위로 오버레이 저장
+  const overlays = {}; // vid -> { polyline, marker, infowindow }
+  const bounds = new naver.maps.LatLngBounds();
+
+  EVENTS.forEach((event) => {
+    event.variants.forEach((v) => {
+      const linePath = v.path.map(
+        ([lat, lng]) => new naver.maps.LatLng(lat, lng)
+      );
+      linePath.forEach((p) => bounds.extend(p));
+
+      // 코스 폴리라인
+      const polyline = new naver.maps.Polyline({
+        path: linePath,
+        strokeWeight: 5,
+        strokeColor: v.color,
+        strokeOpacity: 0.85,
+        strokeStyle: "solid",
+      });
+
+      // 출발 마커
+      const marker = new naver.maps.Marker({
+        position: new naver.maps.LatLng(v.start[0], v.start[1]),
+        title: event.name + " · " + v.distance,
+      });
+
+      // 인포윈도우 (대회 정보 + 이 거리)
+      const iw = new naver.maps.InfoWindow({
+        content:
+          '<div class="iw">' +
+          '<b class="iw__title">' + event.name + "</b>" +
+          '<div class="iw__rows">' +
+          '<div class="iw__row"><span class="iw__label">장소</span>' + event.place + "</div>" +
+          '<div class="iw__row"><span class="iw__label">거리</span>' + v.distance + "</div>" +
+          '<div class="iw__row"><span class="iw__label">일정</span>' + event.date + "</div>" +
+          '<div class="iw__row"><span class="iw__label">참가비</span>' + event.fee + "</div>" +
+          "</div>" +
+          (event.url && event.url !== "#"
+            ? '<a class="iw__link" href="' + event.url + '" target="_blank" rel="noopener">공식 사이트</a>'
+            : "") +
+          "</div>",
+        backgroundColor: "transparent",
+        borderWidth: 0,
+        anchorColor: "#1f242e",
+        anchorSize: new naver.maps.Size(14, 12),
+        pixelOffset: new naver.maps.Point(0, -6),
+      });
+      naver.maps.Event.addListener(marker, "click", () => {
+        iw.open(map, marker);
+      });
+
+      overlays[v.vid] = { polyline, marker, infowindow: iw };
+    });
+  });
+
+  // 처음엔 전부 켜기
+  function setVisible(vid, on) {
+    const o = overlays[vid];
+    if (!o) return;
+    o.polyline.setMap(on ? map : null);
+    o.marker.setMap(on ? map : null);
+    if (!on) o.infowindow.close();
+  }
+  EVENTS.forEach((e) => e.variants.forEach((v) => setVisible(v.vid, true)));
+
+  // 전체 코스가 보이도록 화면 맞춤
+  if (EVENTS.length) map.fitBounds(bounds);
+
+  buildSidebar(setVisible, overlays, map, naver);
+  setupMapControls(map, naver);
+  setupTools(map, naver, overlays);
+}
+
+// 지도 컨트롤(지도유형·줌)을 커스텀 UI로 통일
+function setupMapControls(map, naver) {
+  // 지도 유형 (일반 / 위성)
+  const typeBtns = document.querySelectorAll(".maptype__btn");
+  const types = {
+    normal: naver.maps.MapTypeId.NORMAL,
+    satellite: naver.maps.MapTypeId.HYBRID, // 위성 + 지명 라벨
+  };
+  typeBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      typeBtns.forEach((b) => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      map.setMapTypeId(types[btn.dataset.type]);
+    });
+  });
+
+  // 줌 (+/−)
+  document.querySelectorAll(".zoom__btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const cur = map.getZoom();
+      map.setZoom(btn.dataset.zoom === "in" ? cur + 1 : cur - 1, true);
+    });
+  });
+}
+
+// 지도 도구: 거리재기 / 거리뷰 (한 번에 하나만 활성)
+function setupTools(map, naver, overlays) {
+  const tools = {
+    distance: createDistanceTool(map, naver),
+    streetview: createStreetViewTool(map, naver, overlays),
+  };
+  let activeName = null;
+
+  document.querySelectorAll(".tool__btn").forEach((btn) => {
+    const name = btn.dataset.tool;
+    btn.addEventListener("click", () => {
+      const turnOn = activeName !== name;
+      // 기존 도구 끄기
+      if (activeName) {
+        tools[activeName].setActive(false);
+        document
+          .querySelector('.tool__btn[data-tool="' + activeName + '"]')
+          .classList.remove("is-active");
+      }
+      if (turnOn) {
+        tools[name].setActive(true);
+        btn.classList.add("is-active");
+        activeName = name;
+      } else {
+        activeName = null;
+      }
+    });
+  });
+}
+
+// 거리재기: 클릭으로 점을 찍어 누적 거리 측정
+function createDistanceTool(map, naver) {
+  const readout = document.getElementById("dist-readout");
+  const valueEl = document.getElementById("dist-value");
+  const clearBtn = document.getElementById("dist-clear");
+
+  let points = [];
+  let polyline = null;
+  let markers = [];
+  let clickListener = null;
+
+  function fmt(m) {
+    return m >= 1000 ? (m / 1000).toFixed(2) + " km" : Math.round(m) + " m";
+  }
+  function haversine(a, b) {
+    const R = 6371000;
+    const toR = Math.PI / 180;
+    const dLat = (b.lat() - a.lat()) * toR;
+    const dLng = (b.lng() - a.lng()) * toR;
+    const la1 = a.lat() * toR;
+    const la2 = b.lat() * toR;
+    const h =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  function total() {
+    let d = 0;
+    for (let i = 1; i < points.length; i++) d += haversine(points[i - 1], points[i]);
+    return d;
+  }
+  function redraw() {
+    if (polyline) polyline.setMap(null);
+    polyline = new naver.maps.Polyline({
+      map,
+      path: points,
+      strokeColor: "#E8413A",
+      strokeWeight: 4,
+      strokeOpacity: 0.9,
+    });
+    valueEl.textContent = fmt(total());
+  }
+  function addPoint(latlng) {
+    points.push(latlng);
+    markers.push(
+      new naver.maps.Marker({
+        map,
+        position: latlng,
+        icon: {
+          content: '<div class="dist-dot"></div>',
+          anchor: new naver.maps.Point(5, 5),
+        },
+      })
+    );
+    redraw();
+  }
+  function clearAll() {
+    if (polyline) polyline.setMap(null);
+    polyline = null;
+    markers.forEach((m) => m.setMap(null));
+    markers = [];
+    points = [];
+    valueEl.textContent = "0 m";
+  }
+
+  clearBtn.addEventListener("click", clearAll);
+
+  return {
+    setActive(on) {
+      readout.hidden = !on;
+      if (on) {
+        clickListener = naver.maps.Event.addListener(map, "click", (e) =>
+          addPoint(e.coord)
+        );
+      } else {
+        if (clickListener) naver.maps.Event.removeListener(clickListener);
+        clickListener = null;
+        clearAll();
+      }
+    },
+  };
+}
+
+// 거리뷰: 클릭한 위치의 네이버 파노라마 표시
+function createStreetViewTool(map, naver, overlays) {
+  const panel = document.getElementById("pano");
+  const closeBtn = document.getElementById("pano-close");
+  let panorama = null;
+  let clickListener = null;
+  let courseOverlays = []; // 파노라마 위에 그린 코스 경로(폴리라인/마커)
+  let center = null; // 현재 파노라마 위치(클릭 지점)
+
+  const STEP_M = 5; // 경로점(마커) 보간 간격(m) — 촘촘할수록 바닥에 누운 선처럼 보임
+  const RADIUS_M = 250; // 이 반경 안의 경로만 그림(먼 점은 지평선에 뭉쳐 의미 없음)
+
+  function metersBetween(aLat, aLng, bLat, bLng) {
+    const R = 6371000;
+    const toR = Math.PI / 180;
+    const dLat = (bLat - aLat) * toR;
+    const dLng = (bLng - aLng) * toR;
+    const la = ((aLat + bLat) / 2) * toR;
+    return (
+      R * Math.sqrt(dLat * dLat + Math.cos(la) * Math.cos(la) * dLng * dLng)
+    );
+  }
+
+  // 방위각(정북 0°, 시계방향) — 카메라가 경로 진행 방향을 보게 할 때 사용
+  function bearing(aLat, aLng, bLat, bLng) {
+    const toR = Math.PI / 180;
+    const toD = 180 / Math.PI;
+    const la1 = aLat * toR;
+    const la2 = bLat * toR;
+    const dLng = (bLng - aLng) * toR;
+    const y = Math.sin(dLng) * Math.cos(la2);
+    const x =
+      Math.cos(la1) * Math.sin(la2) -
+      Math.sin(la1) * Math.cos(la2) * Math.cos(dLng);
+    return (Math.atan2(y, x) * toD + 360) % 360;
+  }
+
+  // 듬성듬성한 경유점 사이를 STEP_M 간격으로 보간 → 바닥을 따라 눕는 선
+  function densify(path) {
+    const out = [];
+    for (let i = 0; i < path.length - 1; i++) {
+      const [aLat, aLng] = path[i];
+      const [bLat, bLng] = path[i + 1];
+      const n = Math.max(1, Math.round(metersBetween(aLat, aLng, bLat, bLng) / STEP_M));
+      for (let k = 0; k < n; k++) {
+        const t = k / n;
+        out.push([aLat + (bLat - aLat) * t, aLng + (bLng - aLng) * t]);
+      }
+    }
+    out.push(path[path.length - 1]);
+    return out;
+  }
+
+  // 지도에서 켜져 있는 코스들의 경로를 파노라마 바닥(지면)에 표시
+  function drawCourses() {
+    courseOverlays.forEach((o) => o.setMap(null));
+    courseOverlays = [];
+    if (!panorama || !center) return;
+    const cLat = center.lat();
+    const cLng = center.lng();
+
+    let best = null; // 클릭 지점에 가장 가까운 코스(카메라가 이 방향을 봄)
+
+    EVENTS.forEach((event) => {
+      event.variants.forEach((v) => {
+        const o = overlays[v.vid];
+        // 지도에서 꺼둔 코스는 거리뷰에도 그리지 않음
+        if (!o || !o.polyline.getMap()) return;
+
+        const dense = densify(v.path);
+        // 클릭 지점 반경 안의 보간점만 사용
+        const near = [];
+        let bestIdx = -1;
+        let bestDist = Infinity;
+        dense.forEach(([lat, lng], i) => {
+          const d = metersBetween(cLat, cLng, lat, lng);
+          if (d <= RADIUS_M) near.push([lat, lng]);
+          if (d < bestDist) {
+            bestDist = d;
+            bestIdx = i;
+          }
+        });
+        if (near.length < 2) return;
+
+        if (!best || bestDist < best.dist) {
+          best = { dense, idx: bestIdx, dist: bestDist };
+        }
+
+        // 네이버 파노라마는 폴리라인을 안 그리고 마커만 지면에 투영한다.
+        // → 촘촘한 점을 깔아 바닥에 누운 경로선처럼 보이게 함
+        //   (가까운 점은 발밑, 먼 점은 멀리 찍혀 길을 따라 누움)
+        near.forEach(([lat, lng]) => {
+          courseOverlays.push(
+            new naver.maps.Marker({
+              map: panorama,
+              position: new naver.maps.LatLng(lat, lng),
+              icon: {
+                content:
+                  '<div class="pano-dot" style="background:' + v.color + '"></div>',
+                anchor: new naver.maps.Point(6, 6),
+              },
+            })
+          );
+        });
+      });
+    });
+
+    // 카메라를 가장 가까운 코스의 진행 방향으로 돌려, 경로가 정면 바닥에 눕게 함
+    if (best) {
+      const ahead = best.dense[Math.min(best.idx + 8, best.dense.length - 1)];
+      const pan = bearing(cLat, cLng, ahead[0], ahead[1]);
+      panorama.setPov({ pan, tilt: -8, fov: 100 });
+    }
+  }
+
+  function openAt(latlng) {
+    panel.hidden = false;
+    center = latlng;
+    if (!panorama) {
+      panorama = new naver.maps.Panorama("pano-view", {
+        position: latlng,
+        pov: { pan: 0, tilt: 0, fov: 100 },
+      });
+      // 파노라마 준비 완료 후 경로 그리기
+      naver.maps.Event.addListener(panorama, "init", drawCourses);
+    } else {
+      panorama.setPosition(latlng);
+      drawCourses();
+    }
+  }
+
+  closeBtn.addEventListener("click", () => {
+    panel.hidden = true;
+  });
+
+  return {
+    setActive(on) {
+      if (on) {
+        if (!naver.maps.Panorama) {
+          alert("거리뷰 모듈을 불러오지 못했어요.");
+          return;
+        }
+        clickListener = naver.maps.Event.addListener(map, "click", (e) =>
+          openAt(e.coord)
+        );
+      } else {
+        if (clickListener) naver.maps.Event.removeListener(clickListener);
+        clickListener = null;
+      }
+    },
+  };
+}
+
+// 사이드바: 대회별 카드 + 그 아래 거리별(variant) 토글 행
+function buildSidebar(setVisible, overlays, map, naver) {
+  const ul = document.getElementById("course-list");
+  ul.innerHTML = "";
+
+  // 검색 필터용 항목 모음 { event, li, variants:[{ v, state }] }
+  const items = [];
+
+  EVENTS.forEach((event) => {
+    const li = document.createElement("li");
+    li.className = "course-item";
+    li.innerHTML =
+      '<div class="course-item__head">' +
+      '  <div class="course-item__name">' + event.name + "</div>" +
+      '  <div class="course-item__meta">' +
+      '    <span class="course-item__sub">' + event.place + "</span>" +
+      '    <span class="course-item__sub">' + event.date + "</span>" +
+      "  </div>" +
+      "</div>" +
+      '<div class="variant-list"></div>';
+
+    const vlist = li.querySelector(".variant-list");
+    const variants = [];
+
+    event.variants.forEach((v) => {
+      const row = document.createElement("div");
+      row.className = "variant is-on";
+      row.style.setProperty("--course-color", v.color);
+      row.innerHTML =
+        '<button type="button" class="variant__label">' + v.distance + "</button>" +
+        '<button type="button" class="variant__toggle" aria-label="코스 표시 켜기/끄기" aria-pressed="true"></button>';
+
+      const labelBtn = row.querySelector(".variant__label");
+      const toggleBtn = row.querySelector(".variant__toggle");
+      const state = { on: true };
+
+      function sync() {
+        row.classList.toggle("is-on", state.on);
+        row.classList.toggle("is-off", !state.on);
+        toggleBtn.setAttribute("aria-pressed", String(state.on));
+        setVisible(v.vid, state.on);
+      }
+
+      // 스위치 → 표시 on/off (지도 이동 없음)
+      toggleBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        state.on = !state.on;
+        sync();
+      });
+
+      // 거리 라벨 클릭 → 해당 코스로 이동 + 인포윈도우 (꺼져 있으면 켜기)
+      labelBtn.addEventListener("click", () => {
+        if (!state.on) {
+          state.on = true;
+          sync();
+        }
+        const o = overlays[v.vid];
+        map.panTo(new naver.maps.LatLng(v.start[0], v.start[1]));
+        o.infowindow.open(map, o.marker);
+      });
+
+      vlist.appendChild(row);
+      variants.push({ v, state });
+    });
+
+    ul.appendChild(li);
+    items.push({ event, li, variants });
+  });
+
+  setupSearch(items, setVisible);
+  setupTheme(overlays);
+}
+
+// 다크 / 라이트 테마 전환
+function setupTheme(overlays) {
+  const btn = document.getElementById("theme-toggle");
+  if (!btn) return;
+  const root = document.documentElement;
+
+  // 인포윈도우 꼬리(anchor) 색을 현재 테마에 맞춤
+  function syncInfoWindows() {
+    const iwbg = getComputedStyle(root).getPropertyValue("--iw-bg").trim();
+    Object.keys(overlays).forEach((id) => {
+      overlays[id].infowindow.setOptions({ anchorColor: iwbg });
+      overlays[id].infowindow.close();
+    });
+  }
+  // 다크모드 → 해(라이트로 전환), 라이트모드 → 달(다크로 전환)
+  const SUN =
+    '<svg class="ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/>' +
+    '<path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>';
+  const MOON =
+    '<svg class="ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+
+  function updateIcon() {
+    const isLight = root.getAttribute("data-theme") === "light";
+    btn.innerHTML = isLight ? MOON : SUN;
+  }
+
+  syncInfoWindows();
+  updateIcon();
+
+  btn.addEventListener("click", () => {
+    const isLight = root.getAttribute("data-theme") === "light";
+    if (isLight) {
+      root.removeAttribute("data-theme");
+      localStorage.setItem("theme", "dark");
+    } else {
+      root.setAttribute("data-theme", "light");
+      localStorage.setItem("theme", "light");
+    }
+    syncInfoWindows();
+    updateIcon();
+  });
+}
+
+// 검색: 이름·장소·거리로 코스 필터링 (사이드바 + 지도 동시 반영)
+function setupSearch(items, setVisible) {
+  const input = document.getElementById("search-input");
+  const empty = document.getElementById("search-empty");
+  if (!input) return;
+
+  input.addEventListener("input", () => {
+    const q = input.value.trim().toLowerCase();
+    let shown = 0;
+
+    items.forEach(({ event, li, variants }) => {
+      const haystack = (
+        event.name + " " + event.place + " " +
+        variants.map((x) => x.v.distance).join(" ")
+      ).toLowerCase();
+      const match = q === "" || haystack.includes(q);
+
+      li.hidden = !match;
+      // 검색 중엔 매칭된 대회의 거리만 표시(각 토글 상태 유지), 비매칭은 숨김
+      variants.forEach(({ v, state }) => setVisible(v.vid, match && state.on));
+      if (match) shown++;
+    });
+
+    empty.hidden = shown !== 0;
+  });
+}
+
+// 서버(/api/courses)에서 코스를 받아 data.js의 폴백 시드를 덮어씀.
+// 서버 없이 python 등으로 띄우면 실패 → data.js의 COURSES 그대로 사용.
+function loadCourses() {
+  return fetch("/api/courses")
+    .then((r) => (r.ok ? r.json() : null))
+    .then((list) => {
+      if (Array.isArray(list) && list.length) COURSES = list;
+    })
+    .catch(() => {})
+    .then(() => {
+      EVENTS = normalizeEvents(COURSES);
+    });
+}
+
+// 부트스트랩
+loadCourses()
+  .then(loadNaverSdk)
+  .then(initMap)
+  .catch((err) => {
+    console.error("[지도 초기화 실패]", err);
+    showFallback();
+  });

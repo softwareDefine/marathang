@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: marathang - 2026 마라톤 코스 지도 (Lambda + Function URL + S3)
+
+Parameters:
+  AdminPassword:
+    Type: String
+    Default: marathangisspicy
+    NoEcho: true
+    Description: 어드민 비밀번호
+
+Resources:
+  # 코스 데이터(courses.json)를 담을 비공개 S3 버킷
+  CoursesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  # 정적파일 서빙 + /api/courses CRUD 를 모두 처리하는 단일 함수
+  MarathangFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: lambda.handler
+      Runtime: nodejs20.x
+      Architectures: [x86_64]
+      MemorySize: 256
+      Timeout: 15
+      Environment:
+        Variables:
+          COURSES_BUCKET: !Ref CoursesBucket
+          COURSES_KEY: courses.json
+          ADMIN_PASSWORD: !Ref AdminPassword
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref CoursesBucket
+      FunctionUrlConfig:
+        AuthType: NONE
+
+Outputs:
+  SiteUrl:
+    Description: 접속 주소 (네이버 콘솔 [Web 서비스 URL]에 이 도메인을 등록해야 지도가 뜸)
+    Value: !GetAtt MarathangFunctionUrl.FunctionUrl
+  AdminUrl:
+    Description: 어드민 주소
+    Value: !Sub "${MarathangFunctionUrl.FunctionUrl}admin"
+  Bucket:
+    Description: 코스 데이터(courses.json) 저장 버킷
+    Value: !Ref CoursesBucket

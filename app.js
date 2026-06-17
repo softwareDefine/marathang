@@ -182,6 +182,44 @@ function initMap() {
   buildSidebar(setVisible, overlays, map, naver);
   setupMapControls(map, naver);
   setupTools(map, naver, overlays);
+  setupLocate(map, naver);
+}
+
+// 내 현위치: 버튼 클릭 시 지오로케이션으로 지도 이동 + 마커
+function setupLocate(map, naver) {
+  const btn = document.getElementById("locate-btn");
+  if (!btn) return;
+  let marker = null;
+  btn.addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      alert("이 브라우저는 위치 기능을 지원하지 않아요.");
+      return;
+    }
+    btn.classList.add("is-loading");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        btn.classList.remove("is-loading");
+        const ll = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
+        map.setCenter(ll);
+        map.setZoom(14, true);
+        if (marker) marker.setMap(null);
+        marker = new naver.maps.Marker({
+          map,
+          position: ll,
+          zIndex: 1000,
+          icon: {
+            content: '<div class="me-dot"></div>',
+            anchor: new naver.maps.Point(11, 11),
+          },
+        });
+      },
+      () => {
+        btn.classList.remove("is-loading");
+        alert("현위치를 가져오지 못했어요. 위치 권한을 허용했는지 확인해주세요.");
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+    );
+  });
 }
 
 // 지도 컨트롤(지도유형·줌)을 커스텀 UI로 통일
@@ -219,6 +257,7 @@ function setupTools(map, naver, overlays) {
 
   document.querySelectorAll(".tool__btn").forEach((btn) => {
     const name = btn.dataset.tool;
+    if (!name) return; // data-tool 없는 버튼(현위치 등)은 setupTools 대상 아님
     btn.addEventListener("click", () => {
       const turnOn = activeName !== name;
       // 기존 도구 끄기

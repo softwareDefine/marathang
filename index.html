@@ -103,13 +103,24 @@
     </div>
 
     <div class="maptype">
-      <button class="maptype__btn is-active" type="button" data-type="normal">일반</button>
-      <button class="maptype__btn" type="button" data-type="satellite">위성</button>
+      <button class="maptype__btn is-active" type="button" data-type="normal" aria-label="일반 지도" title="일반">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z" /><path d="M9 4v14M15 6v14" /></svg>
+      </button>
+      <button class="maptype__btn" type="button" data-type="satellite" aria-label="위성 지도" title="위성">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.6 4 6 4 9s-1.5 6.4-4 9c-2.5-2.6-4-6-4-9s1.5-6.4 4-9z" /></svg>
+      </button>
     </div>
 
     <div class="tools">
-      <button class="tool__btn" type="button" data-tool="distance">거리재기</button>
-      <button class="tool__btn" type="button" data-tool="streetview">거리뷰</button>
+      <button class="tool__btn" type="button" data-tool="distance" aria-label="거리재기" title="거리재기">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 17 3l4 4L7 21z" /><path d="M7.5 9.5l1.5 1.5M10.5 6.5l1.5 1.5M13.5 9.5l1.5 1.5" /></svg>
+      </button>
+      <button class="tool__btn" type="button" data-tool="streetview" aria-label="거리뷰" title="거리뷰">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5.5" r="2.5" /><path d="M12 8.5v7M8 12l4-1 4 1M9.5 21l2.5-5 2.5 5" /></svg>
+      </button>
+      <button id="locate-btn" class="tool__btn" type="button" aria-label="내 현위치" title="내 현위치">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
+      </button>
     </div>
 
     <div id="dist-readout" class="dist-readout" hidden>

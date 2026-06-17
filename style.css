@@ -169,15 +169,24 @@ html, body {
   overflow: hidden;
 }
 .maptype__btn {
-  padding: 0 14px;
+  width: 46px;
+  display: grid;
+  place-items: center;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--muted);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
+}
+.maptype__btn svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .maptype__btn:hover { color: var(--text); }
 .maptype__btn.is-active { color: var(--text); background: var(--panel-2); }
@@ -224,22 +233,42 @@ html, body {
   gap: 8px;
 }
 .tool__btn {
-  height: 40px;
-  padding: 0 14px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
   background: var(--float-bg);
   backdrop-filter: blur(8px);
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: var(--float-shadow);
   color: var(--text);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition: border-color 0.15s, color 0.15s, opacity 0.15s;
 }
-.tool__btn:hover { border-color: var(--accent); }
-.tool__btn.is-active { border-color: var(--accent); color: var(--accent); }
+.tool__btn svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tool__btn:hover { border-color: var(--accent); color: var(--accent); }
+.tool__btn.is-active { border-color: var(--accent); color: var(--accent); background: var(--panel-2); }
+.tool__btn.is-loading { opacity: 0.5; pointer-events: none; }
+
+/* 내 현위치 마커 */
+.me-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #2f6bff;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 5px rgba(47, 107, 255, 0.25), 0 1px 4px rgba(0, 0, 0, 0.4);
+}
 
 /* 거리 측정 표시 (상단 중앙) */
 .dist-readout {
@@ -728,11 +757,11 @@ html:not([data-theme="light"]) .map img[src*="/styles/basic/"] {
   .theme-toggle { width: 44px; height: 44px; }
   .maptype { top: 12px; right: 12px; height: 40px; }
 
-  /* 도구·줌: 하단 시트 위로 (검색 행과 겹치지 않게) */
+  /* 줌 버튼 숨김 (손가락 핀치 줌으로 대체) */
+  .zoom { display: none; }
+  /* 도구(거리재기·거리뷰·현위치)를 하단 시트 위로 */
   .tools { top: auto; bottom: calc(46vh + 12px); right: 12px; }
-  .tool__btn { height: 36px; font-size: 12px; padding: 0 12px; }
-  .zoom { top: auto; bottom: calc(46vh + 58px); right: 12px; transform: none; }
-  .zoom__btn { width: 40px; height: 40px; }
+  .tool__btn { width: 40px; height: 40px; }
 
   /* 코스목록: 하단 시트 (제목 탭으로 접기) */
   .sidebar {

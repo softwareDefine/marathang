@@ -480,6 +480,14 @@ function buildSidebar(setVisible, overlays, map, naver) {
   const ul = document.getElementById("course-list");
   ul.innerHTML = "";
 
+  // 모바일 하단 시트: 제목 탭하면 접기/펴기
+  const sidebar = document.querySelector(".sidebar");
+  const title = document.querySelector(".sidebar__title");
+  if (title && sidebar && !title.dataset.bound) {
+    title.dataset.bound = "1";
+    title.addEventListener("click", () => sidebar.classList.toggle("is-collapsed"));
+  }
+
   // 검색 필터용 항목 모음 { event, li, variants:[{ v, state }] }
   const items = [];
 

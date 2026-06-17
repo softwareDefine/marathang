@@ -714,6 +714,60 @@ html:not([data-theme="light"]) .map img[src*="/styles/basic/"] {
 }
 
 /* ── 반응형: 좁은 화면에선 사이드바 폭만 줄임 ── */
+/* ── 반응형 ── */
 @media (max-width: 860px) {
   .sidebar { width: calc(100vw - 32px); max-width: 360px; }
+  .filter-panel { width: calc(100vw - 32px); max-width: 320px; }
+  .pano { width: calc(100vw - 32px); max-width: 440px; }
+}
+
+@media (max-width: 640px) {
+  /* 검색: 폭 축소(우상단 컨트롤과 안 겹치게) */
+  .topbar { top: 12px; left: 12px; gap: 10px; }
+  .search { width: min(320px, calc(100vw - 92px)); height: 48px; }
+  .theme-toggle { width: 44px; height: 44px; }
+  .maptype { top: 12px; right: 12px; height: 40px; }
+
+  /* 도구·줌: 하단 시트 위로 (검색 행과 겹치지 않게) */
+  .tools { top: auto; bottom: calc(46vh + 12px); right: 12px; }
+  .tool__btn { height: 36px; font-size: 12px; padding: 0 12px; }
+  .zoom { top: auto; bottom: calc(46vh + 58px); right: 12px; transform: none; }
+  .zoom__btn { width: 40px; height: 40px; }
+
+  /* 코스목록: 하단 시트 (제목 탭으로 접기) */
+  .sidebar {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+    max-height: 46vh;
+    border-radius: 16px 16px 0 0;
+    border-bottom: 0;
+  }
+  .sidebar.is-collapsed { max-height: 56px; overflow: hidden; }
+  .sidebar__title { cursor: pointer; }
+  .sidebar__title::after { content: "▾"; float: right; color: var(--muted); }
+  .sidebar.is-collapsed .sidebar__title::after { content: "▸"; }
+
+  /* 필터: 하단 시트 */
+  .filter-panel {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+    max-height: 85vh;
+    overflow-y: auto;
+    border-radius: 16px 16px 0 0;
+    z-index: 40;
+  }
+
+  /* 거리뷰: 가로 꽉 */
+  .pano { left: 12px; right: 12px; width: auto; max-width: none; height: 38vh; bottom: 12px; }
+
+  /* 거리재기 안내: 검색 아래로 */
+  .dist-readout { top: 118px; left: 12px; right: 12px; transform: none; width: auto; }
 }

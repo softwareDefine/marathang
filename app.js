@@ -598,13 +598,20 @@ function setupSearch(items, setVisible) {
   if (!input) return;
 
   // 필터 상태
-  const f = { regions: new Set(), distMax: 40, feeMax: 100000, scale: "all", dateFrom: "", dateTo: "" };
+  const f = { regions: new Set(), distLo: 0, distHi: 40, feeLo: 0, feeHi: 100000, scale: "all", dateFrom: "", dateTo: "" };
 
   function passes(ev) {
     if (f.regions.size && !f.regions.has(ev.region)) return false;
-    // 거리: 최대 N km 이하 종목이 있는 대회만 (40 = 제한 없음)
-    if (f.distMax < 40 && !ev.distancesKm.some((d) => d <= f.distMax)) return false;
-    if (f.feeMax < 100000 && (ev.feeMin === null || ev.feeMin > f.feeMax)) return false;
+    // 거리: [distLo, distHi] 안의 종목이 있는 대회만 (distHi=40 → 상한 없음)
+    if (!(f.distLo === 0 && f.distHi === 40)) {
+      const hi = f.distHi === 40 ? Infinity : f.distHi;
+      if (!ev.distancesKm.some((d) => d >= f.distLo && d <= hi)) return false;
+    }
+    // 참가비: 최소금액이 [feeLo, feeHi] 안 (feeHi=100000 → 상한 없음)
+    if (!(f.feeLo === 0 && f.feeHi === 100000)) {
+      const hi = f.feeHi >= 100000 ? Infinity : f.feeHi;
+      if (ev.feeMin === null || ev.feeMin < f.feeLo || ev.feeMin > hi) return false;
+    }
     if (f.scale !== "all") {
       const s = ev.scale;
       if (s === null) return false;
@@ -666,23 +673,48 @@ function setupSearch(items, setVisible) {
     });
   }
 
-  // 거리 슬라이더 (최대 거리 단일)
-  const dMax = document.getElementById("dist-max");
-  const dLabel = document.getElementById("dist-label");
-  if (dMax) dMax.addEventListener("input", () => {
-    f.distMax = Number(dMax.value);
-    dLabel.textContent = f.distMax >= 40 ? "전체" : "≤ " + f.distMax + "km";
-    apply();
-  });
+  // 선택 구간(fill) 위치 갱신
+  function fillRange(el, lo, hi, min, max) {
+    if (!el) return;
+    const l = ((lo - min) / (max - min)) * 100;
+    const r = ((hi - min) / (max - min)) * 100;
+    el.style.left = l + "%";
+    el.style.width = Math.max(0, r - l) + "%";
+  }
 
-  // 참가비 슬라이더 (최대)
-  const feeEl = document.getElementById("fee-max");
-  const feeLabel = document.getElementById("fee-label");
-  if (feeEl) feeEl.addEventListener("input", () => {
-    f.feeMax = Number(feeEl.value);
-    feeLabel.textContent = f.feeMax >= 100000 ? "무제한" : "≤ " + f.feeMax.toLocaleString() + "원";
+  // 거리 듀얼 슬라이더 (단일 트랙, 핸들 2개)
+  const dMin = document.getElementById("dist-min");
+  const dMax = document.getElementById("dist-max");
+  const dFill = document.getElementById("dist-fill");
+  const dLabel = document.getElementById("dist-label");
+  function syncDist() {
+    let lo = Number(dMin.value), hi = Number(dMax.value);
+    if (lo > hi) { [lo, hi] = [hi, lo]; dMin.value = lo; dMax.value = hi; }
+    f.distLo = lo; f.distHi = hi;
+    dLabel.textContent = lo + " ~ " + (hi === 40 ? "40km+" : hi + "km");
+    fillRange(dFill, lo, hi, 0, 40);
     apply();
-  });
+  }
+  if (dMin && dMax) { dMin.addEventListener("input", syncDist); dMax.addEventListener("input", syncDist); }
+
+  // 참가비 듀얼 슬라이더 (단일 트랙, 핸들 2개)
+  const fMin = document.getElementById("fee-min");
+  const fMax = document.getElementById("fee-max");
+  const fFill = document.getElementById("fee-fill");
+  const feeLabel = document.getElementById("fee-label");
+  function syncFee() {
+    let lo = Number(fMin.value), hi = Number(fMax.value);
+    if (lo > hi) { [lo, hi] = [hi, lo]; fMin.value = lo; fMax.value = hi; }
+    f.feeLo = lo; f.feeHi = hi;
+    feeLabel.textContent = lo.toLocaleString() + "원 ~ " + (hi >= 100000 ? "무제한" : hi.toLocaleString() + "원");
+    fillRange(fFill, lo, hi, 0, 100000);
+    apply();
+  }
+  if (fMin && fMax) { fMin.addEventListener("input", syncFee); fMax.addEventListener("input", syncFee); }
+
+  // 초기 fill (전체 구간)
+  fillRange(dFill, 0, 40, 0, 40);
+  fillRange(fFill, 0, 100000, 0, 100000);
 
   // 규모 칩 (단일 선택)
   document.querySelectorAll("#filter-scale .chip").forEach((b) => {
@@ -703,12 +735,16 @@ function setupSearch(items, setVisible) {
   // 초기화
   const reset = document.getElementById("filter-reset");
   if (reset) reset.addEventListener("click", () => {
-    f.regions.clear(); f.distMax = 40; f.feeMax = 100000; f.scale = "all"; f.dateFrom = ""; f.dateTo = "";
+    f.regions.clear(); f.distLo = 0; f.distHi = 40; f.feeLo = 0; f.feeHi = 100000; f.scale = "all"; f.dateFrom = ""; f.dateTo = "";
     document.querySelectorAll("#filter-regions .chip").forEach((x) => x.classList.remove("is-on"));
+    if (dMin) dMin.value = 0;
     if (dMax) dMax.value = 40;
-    if (dLabel) dLabel.textContent = "전체";
-    if (feeEl) feeEl.value = 100000;
-    if (feeLabel) feeLabel.textContent = "무제한";
+    if (dLabel) dLabel.textContent = "0 ~ 40km+";
+    fillRange(dFill, 0, 40, 0, 40);
+    if (fMin) fMin.value = 0;
+    if (fMax) fMax.value = 100000;
+    if (feeLabel) feeLabel.textContent = "0원 ~ 무제한";
+    fillRange(fFill, 0, 100000, 0, 100000);
     document.querySelectorAll("#filter-scale .chip").forEach((x) => x.classList.toggle("is-on", x.dataset.scale === "all"));
     if (dateFrom) dateFrom.value = "";
     if (dateTo) dateTo.value = "";

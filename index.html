@@ -33,21 +33,19 @@
         </div>
         <button id="theme-toggle" class="theme-toggle" type="button" aria-label="테마 전환"></button>
       </div>
-      <div class="searchbar">
-        <div class="search">
-          <svg class="search__icon" viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="7" />
-            <line x1="20.5" y1="20.5" x2="16.5" y2="16.5" />
-          </svg>
-          <input
-            id="search-input"
-            class="search__input"
-            type="search"
-            placeholder="코스 검색"
-            autocomplete="off"
-          />
-        </div>
-        <button id="filter-toggle" class="filter-btn" type="button" aria-label="필터" aria-expanded="false">
+      <div class="search">
+        <svg class="search__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <line x1="20.5" y1="20.5" x2="16.5" y2="16.5" />
+        </svg>
+        <input
+          id="search-input"
+          class="search__input"
+          type="search"
+          placeholder="코스 검색"
+          autocomplete="off"
+        />
+        <button id="filter-toggle" class="search__filter" type="button" aria-label="필터" aria-expanded="false">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <line x1="4" y1="7" x2="20" y2="7" />
             <line x1="7" y1="12" x2="17" y2="12" />
@@ -68,12 +66,22 @@
         <div class="chips" id="filter-regions"></div>
       </div>
       <div class="filters__row">
-        <div class="filters__label">거리 <span id="dist-label" class="filters__val">전체</span></div>
-        <input type="range" id="dist-max" min="0" max="40" step="1" value="40" />
+        <div class="filters__label">거리 <span id="dist-label" class="filters__val">0 ~ 40km+</span></div>
+        <div class="range">
+          <div class="range__track"></div>
+          <div class="range__fill" id="dist-fill"></div>
+          <input type="range" id="dist-min" min="0" max="40" step="1" value="0" />
+          <input type="range" id="dist-max" min="0" max="40" step="1" value="40" />
+        </div>
       </div>
       <div class="filters__row">
-        <div class="filters__label">참가비 <span id="fee-label" class="filters__val">무제한</span></div>
-        <input type="range" id="fee-max" min="0" max="100000" step="5000" value="100000" />
+        <div class="filters__label">참가비 <span id="fee-label" class="filters__val">0원 ~ 무제한</span></div>
+        <div class="range">
+          <div class="range__track"></div>
+          <div class="range__fill" id="fee-fill"></div>
+          <input type="range" id="fee-min" min="0" max="100000" step="5000" value="0" />
+          <input type="range" id="fee-max" min="0" max="100000" step="5000" value="100000" />
+        </div>
       </div>
       <div class="filters__row">
         <span class="filters__label">규모</span>

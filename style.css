@@ -587,55 +587,34 @@ html, body {
   color: var(--muted);
 }
 
-/* 거리별 코스 행 */
-.variant-list { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+/* 거리별 코스 — 칩 가로 배치 (클릭 = 표시 on/off) */
+.course-item__head { cursor: pointer; }
+.variant-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 14px 12px;
+  border-top: 1px solid var(--line);
+}
 .variant {
   --course-color: var(--accent);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 14px;
-  transition: opacity 0.15s;
-}
-.variant + .variant { border-top: 1px solid var(--line); }
-.variant.is-off { opacity: 0.45; }
-.variant__label {
-  flex: 1;
-  min-width: 0;
-  text-align: left;
-  background: none;
-  border: 0;
-  padding: 2px 0;
-  color: var(--text);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.variant__label:hover { color: var(--course-color); }
-.variant__toggle {
-  flex: none;
-  width: 38px;
-  height: 22px;
-  padding: 0;
+  padding: 3px 10px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--toggle-off);
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
-.variant__toggle::after {
-  content: "";
-  display: block;
-  width: 16px;
-  height: 16px;
-  margin-left: 2px;
-  border-radius: 50%;
-  background: var(--muted);
-  transition: margin-left 0.15s, background 0.15s;
+.variant:hover { color: var(--text); border-color: var(--course-color); }
+.variant.is-on {
+  background: var(--course-color);
+  border-color: var(--course-color);
+  color: #fff;
 }
-.variant.is-on .variant__toggle { background: var(--course-color); border-color: transparent; }
-.variant.is-on .variant__toggle::after { margin-left: 18px; background: #fff; }
 
 /* 스크린리더 전용 (실제 체크박스) */
 .sr-only {

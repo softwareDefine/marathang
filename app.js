@@ -499,45 +499,36 @@ function buildSidebar(setVisible, overlays, map, naver) {
     const vlist = li.querySelector(".variant-list");
     const variants = [];
 
+    // 거리별 코스를 칩으로 가로 배치 (칩 클릭 = 표시 on/off)
     event.variants.forEach((v) => {
-      const row = document.createElement("div");
-      row.className = "variant is-on";
-      row.style.setProperty("--course-color", v.color);
-      row.innerHTML =
-        '<button type="button" class="variant__label">' + v.distance + "</button>" +
-        '<button type="button" class="variant__toggle" aria-label="코스 표시 켜기/끄기" aria-pressed="true"></button>';
-
-      const labelBtn = row.querySelector(".variant__label");
-      const toggleBtn = row.querySelector(".variant__toggle");
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "variant is-on";
+      chip.style.setProperty("--course-color", v.color);
+      chip.textContent = v.distance;
+      chip.setAttribute("aria-pressed", "true");
       const state = { on: true };
 
       function sync() {
-        row.classList.toggle("is-on", state.on);
-        row.classList.toggle("is-off", !state.on);
-        toggleBtn.setAttribute("aria-pressed", String(state.on));
+        chip.classList.toggle("is-on", state.on);
+        chip.classList.toggle("is-off", !state.on);
+        chip.setAttribute("aria-pressed", String(state.on));
         setVisible(v.vid, state.on);
       }
+      chip.addEventListener("click", () => { state.on = !state.on; sync(); });
 
-      // 스위치 → 표시 on/off (지도 이동 없음)
-      toggleBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        state.on = !state.on;
-        sync();
-      });
-
-      // 거리 라벨 클릭 → 해당 코스로 이동 + 인포윈도우 (꺼져 있으면 켜기)
-      labelBtn.addEventListener("click", () => {
-        if (!state.on) {
-          state.on = true;
-          sync();
-        }
-        const o = overlays[v.vid];
-        map.panTo(new naver.maps.LatLng(v.start[0], v.start[1]));
-        o.infowindow.open(map, o.marker);
-      });
-
-      vlist.appendChild(row);
+      vlist.appendChild(chip);
       variants.push({ v, state });
+    });
+
+    // 카드 헤드 클릭 → 첫 코스로 지도 이동 + 인포윈도우
+    const head = li.querySelector(".course-item__head");
+    head.addEventListener("click", () => {
+      const v0 = event.variants[0];
+      if (!v0) return;
+      const o = overlays[v0.vid];
+      map.panTo(new naver.maps.LatLng(v0.start[0], v0.start[1]));
+      if (o) o.infowindow.open(map, o.marker);
     });
 
     ul.appendChild(li);

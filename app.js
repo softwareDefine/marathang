@@ -148,16 +148,10 @@ function initMap() {
         anchorSize: new naver.maps.Size(14, 12),
         pixelOffset: new naver.maps.Point(0, -6),
       });
-      naver.maps.Event.addListener(marker, "click", () => {
-        iw.open(map, marker);
-        // 말풍선 열 때마다 조회수 +1 → 새 값으로 내용 갱신
-        bumpView(event.id).then((count) => {
-          if (count != null) { VIEWS[event.id] = count; iw.setContent(iwContent(event, v)); }
-        });
-      });
-
-      overlays[v.vid] = { polyline, marker, infowindow: iw };
+      overlays[v.vid] = { polyline, marker, infowindow: iw, event, v };
       GPX_INDEX[v.vid] = { name: event.name + " " + v.distance, path: v.path };
+      // 마커 클릭 = 말풍선 열기(+조회수). 사이드바 클릭과 동일 경로(openInfo)로 통일.
+      naver.maps.Event.addListener(marker, "click", () => openInfo(map, overlays[v.vid]));
     });
   });
 
@@ -191,6 +185,20 @@ function initMap() {
   locateMe(map, naver, { silent: true, zoom: 13 });
 }
 
+// 내 위치(위경도). 지오로케이션 성공 시 저장 → '가까운 순' 정렬에 사용
+let myLocation = null;
+// 두 좌표 사이 거리(km) — Haversine
+function distKm(aLat, aLng, bLat, bLng) {
+  const R = 6371;
+  const toR = Math.PI / 180;
+  const dLat = (bLat - aLat) * toR;
+  const dLng = (bLng - aLng) * toR;
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(aLat * toR) * Math.cos(bLat * toR) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
 // 지오로케이션으로 지도를 내 위치로 이동 + 마커. opts.silent면 실패해도 알림 X(자동 호출용)
 let myLocationMarker = null;
 function locateMe(map, naver, opts) {
@@ -204,6 +212,7 @@ function locateMe(map, naver, opts) {
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       if (btn) btn.classList.remove("is-loading");
+      myLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       const ll = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
       map.setCenter(ll);
       map.setZoom(opts.zoom || 14, true);
@@ -217,6 +226,7 @@ function locateMe(map, naver, opts) {
           anchor: new naver.maps.Point(11, 11),
         },
       });
+      if (opts.onLocated) opts.onLocated(myLocation);
     },
     () => {
       if (btn) btn.classList.remove("is-loading");
@@ -583,9 +593,8 @@ function buildSidebar(setVisible, overlays, map, naver) {
     head.addEventListener("click", () => {
       const v0 = event.variants[0];
       if (!v0) return;
-      const o = overlays[v0.vid];
       map.panTo(new naver.maps.LatLng(v0.start[0], v0.start[1]));
-      if (o) o.infowindow.open(map, o.marker);
+      openInfo(map, overlays[v0.vid]); // 마커 클릭과 동일: 조회수 +1 + 내용 갱신
     });
 
     ul.appendChild(li);
@@ -597,14 +606,26 @@ function buildSidebar(setVisible, overlays, map, naver) {
   if (sortSel) {
     const minDistOf = (e) => (e.distancesKm.length ? Math.min(...e.distancesKm) : Infinity);
     const feeOf = (e) => (e.feeMin == null ? Infinity : e.feeMin);
+    // 내 위치 → 대회 출발점(첫 거리의 start) 거리(km). 위치/좌표 없으면 Infinity(뒤로)
+    const nearOf = (e) => {
+      const s = e.variants[0] && e.variants[0].start;
+      if (!myLocation || !s) return Infinity;
+      return distKm(myLocation.lat, myLocation.lng, s[0], s[1]);
+    };
     const sorters = {
       name: (a, b) => a.event.name.localeCompare(b.event.name, "ko"),
       date: (a, b) => (a.event.date || "9999-99-99").localeCompare(b.event.date || "9999-99-99"),
       distance: (a, b) => minDistOf(a.event) - minDistOf(b.event),
       fee: (a, b) => feeOf(a.event) - feeOf(b.event),
       views: (a, b) => (VIEWS[b.event.id] || 0) - (VIEWS[a.event.id] || 0),
+      near: (a, b) => nearOf(a.event) - nearOf(b.event),
     };
     const applySort = () => {
+      // '가까운 순'인데 아직 내 위치를 모르면 위치부터 받고 다시 정렬
+      if (sortSel.value === "near" && !myLocation) {
+        locateMe(map, naver, { silent: true, zoom: 13, onLocated: applySort });
+        return;
+      }
       const fn = sorters[sortSel.value];
       const arr = items.slice();
       if (fn) arr.sort(fn);
@@ -858,6 +879,14 @@ function iwContent(event, v) {
       : "") +
     '<a class="iw__link iw__gpx" href="#" data-vid="' + v.vid + '">GPX 다운로드</a>' +
     "</div>";
+}
+// 말풍선 열기 + 조회수 +1 + 새 카운트로 내용 갱신. 마커/사이드바 클릭 공용.
+function openInfo(map, o) {
+  if (!o) return;
+  o.infowindow.open(map, o.marker);
+  bumpView(o.event.id).then((count) => {
+    if (count != null) { VIEWS[o.event.id] = count; o.infowindow.setContent(iwContent(o.event, o.v)); }
+  });
 }
 // 조회수 +1 (말풍선 열 때). 새 카운트 반환(실패 시 null).
 function bumpView(eid) {

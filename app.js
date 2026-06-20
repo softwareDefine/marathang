@@ -151,6 +151,7 @@ function initMap() {
           (event.url && event.url !== "#"
             ? '<a class="iw__link" href="' + event.url + '" target="_blank" rel="noopener">공식 사이트</a>'
             : "") +
+          '<a class="iw__link iw__gpx" href="#" data-vid="' + v.vid + '">GPX 다운로드</a>' +
           "</div>",
         backgroundColor: "transparent",
         borderWidth: 0,
@@ -163,6 +164,7 @@ function initMap() {
       });
 
       overlays[v.vid] = { polyline, marker, infowindow: iw };
+      GPX_INDEX[v.vid] = { name: event.name + " " + v.distance, path: v.path };
     });
   });
 
@@ -804,6 +806,49 @@ function loadCourses() {
       EVENTS = normalizeEvents(COURSES);
     });
 }
+
+// ── GPX 다운로드 ────────────────────────────────────────────────
+const GPX_INDEX = {}; // vid -> { name, path } (InfoWindow 다운로드용)
+function escXml(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+// path([[lat,lng],...]) → GPX 1.1 trk 문자열
+function buildGpx(name, path) {
+  const pts = (path || [])
+    .map(([lat, lng]) => '      <trkpt lat="' + lat + '" lon="' + lng + '"></trkpt>')
+    .join("\n");
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<gpx version="1.1" creator="marathang" xmlns="http://www.topografix.com/GPX/1/1">\n' +
+    "  <metadata><name>" + escXml(name) + "</name></metadata>\n" +
+    "  <trk><name>" + escXml(name) + "</name><trkseg>\n" + pts + "\n  </trkseg></trk>\n</gpx>\n";
+}
+function gpxFilename(name) {
+  const base = String(name).trim().replace(/[\\/:*?"<>|]+/g, "_").replace(/\s+/g, "_");
+  return (base || "course") + ".gpx";
+}
+function downloadGpx(filename, text) {
+  const blob = new Blob([text], { type: "application/gpx+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+// InfoWindow 안의 'GPX 다운로드' 링크 (위임 — 말풍선은 열릴 때 DOM 생성됨)
+function setupGpxDownload() {
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest && e.target.closest(".iw__gpx");
+    if (!a) return;
+    e.preventDefault();
+    const rec = GPX_INDEX[a.getAttribute("data-vid")];
+    if (!rec || !rec.path || rec.path.length < 2) { alert("내려받을 경로가 없습니다."); return; }
+    downloadGpx(gpxFilename(rec.name), buildGpx(rec.name, rec.path));
+  });
+}
+setupGpxDownload();
 
 // ── 사용자 의견(기능 제안 / 문제 신고) ───────────────────────────
 function setupFeedback() {

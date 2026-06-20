@@ -154,6 +154,25 @@ function updateInfo(i) {
     : "경로 없음 (GPX 업로드 또는 지도 그리기)";
 }
 
+// ── 거리별 기본 색상 ────────────────────────────────────────────
+// 거리 문자열 → 대표 km ("풀"=42.195, "하프"=21.1, "10km"/"10" → 10)
+function parseDistKm(str) {
+  const s = String(str || "");
+  if (/풀/.test(s)) return 42.195;
+  if (/하프/.test(s)) return 21.1;
+  const m = s.match(/(\d+(?:\.\d+)?)\s*km/i) || s.match(/(\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]) : null;
+}
+// 거리 구간별 기본색. km 없으면 null(=색 유지)
+function colorForDistance(km) {
+  if (km == null || !isFinite(km)) return null;
+  if (km < 5) return "#FF8A1E";   // 5km 미만 주황
+  if (km < 10) return "#E8413A";  // 5~10 빨강
+  if (km < 20) return "#3BE84F";  // 10~20 연두
+  if (km < 40) return "#3BC5E8";  // 20~40 민트
+  return "#3B74E8";               // 40+ 파랑
+}
+
 // ── 거리별 행 ───────────────────────────────────────────────────
 function addVariantRow(data) {
   data = data || {};
@@ -169,6 +188,7 @@ function addVariantRow(data) {
     '  <input class="field__input vrow__dist" placeholder="거리 (예: 10km)">' +
     '  <input class="field__color vrow__color" type="color" value="' + (data.color || "#E8413A") + '">' +
     '  <button type="button" class="btn btn--ghost btn--sm vrow__dup" title="이 경로를 복제해 새 거리 추가">복제</button>' +
+    '  <button type="button" class="btn btn--ghost btn--sm vrow__gpxdl" title="이 거리 경로를 GPX로 다운로드">GPX</button>' +
     '  <button type="button" class="btn btn--danger btn--sm vrow__del">삭제</button>' +
     "</div>" +
     '<div class="vrow__mode">' +
@@ -194,11 +214,19 @@ function addVariantRow(data) {
     path: Array.isArray(data.path) ? data.path.slice() : [],
     line: null,
     dots: [],
+    // 색을 사용자가 직접 골랐는지. 기존/복제 색(data.color)이 있으면 보존, 새 행이면 거리로 자동 결정.
+    colorTouched: !!(data && data.color),
   };
   v.distEl.value = data.distance || "";
   variants.push(v);
 
-  v.colorEl.addEventListener("input", () => redrawVariant(variants.indexOf(v)));
+  v.colorEl.addEventListener("input", () => { v.colorTouched = true; redrawVariant(variants.indexOf(v)); });
+  // 거리 입력 시 색을 거리 구간 기본색으로 자동 설정 (사용자가 색을 직접 고르기 전까지)
+  v.distEl.addEventListener("input", () => {
+    if (v.colorTouched) return;
+    const c = colorForDistance(parseDistKm(v.distEl.value));
+    if (c) { v.colorEl.value = c; redrawVariant(variants.indexOf(v)); }
+  });
   v.gpxEl.addEventListener("change", () => { if (v.gpxEl.files[0]) handleGpx(variants.indexOf(v), v.gpxEl.files[0]); });
   el.querySelector(".vrow__dup").addEventListener("click", () => {
     // 같은 경로를 복제해 새 거리 행 추가 (5km/10km/하프/풀이 경로 겹칠 때)
@@ -207,6 +235,7 @@ function addVariantRow(data) {
   });
   el.querySelector(".vrow__up").addEventListener("click", () => moveVariant(variants.indexOf(v), -1));
   el.querySelector(".vrow__down").addEventListener("click", () => moveVariant(variants.indexOf(v), 1));
+  el.querySelector(".vrow__gpxdl").addEventListener("click", () => downloadVariantGpx(variants.indexOf(v)));
   el.querySelector(".vrow__del").addEventListener("click", () => removeVariant(variants.indexOf(v)));
   el.querySelectorAll('input[type="radio"]').forEach((r) =>
     r.addEventListener("change", () => setMode(variants.indexOf(v), el.querySelector('input[type="radio"]:checked').value))
@@ -245,6 +274,45 @@ function refreshOrderButtons() {
     if (up) up.disabled = idx === 0;
     if (down) down.disabled = idx === variants.length - 1;
   });
+}
+// ── GPX 다운로드 (거리 행의 현재 경로를 그대로) ──────────────────
+function escXml(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function buildGpx(name, path) {
+  const pts = (path || [])
+    .map(([lat, lng]) => '      <trkpt lat="' + lat + '" lon="' + lng + '"></trkpt>')
+    .join("\n");
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<gpx version="1.1" creator="marathang" xmlns="http://www.topografix.com/GPX/1/1">\n' +
+    "  <metadata><name>" + escXml(name) + "</name></metadata>\n" +
+    "  <trk><name>" + escXml(name) + "</name><trkseg>\n" + pts + "\n  </trkseg></trk>\n</gpx>\n";
+}
+function gpxFilename(name) {
+  const base = String(name).trim().replace(/[\\/:*?"<>|]+/g, "_").replace(/\s+/g, "_");
+  return (base || "course") + ".gpx";
+}
+function downloadGpx(filename, text) {
+  const blob = new Blob([text], { type: "application/gpx+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function downloadVariantGpx(i) {
+  const v = variants[i];
+  if (!v || v.path.length < 2) {
+    alert("내려받을 경로가 없습니다. GPX를 업로드하거나 지도에서 그려주세요.");
+    return;
+  }
+  const eventName = (document.querySelector('#course-form [name="name"]').value || "").trim();
+  const dist = (v.distEl.value || "").trim();
+  const name = (eventName + (dist ? " " + dist : "")).trim() || "course";
+  downloadGpx(gpxFilename(name), buildGpx(name, v.path));
 }
 function setMode(i, mode) {
   const v = variants[i];

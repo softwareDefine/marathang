@@ -17,6 +17,7 @@ const DATA_FILE = path.join(ROOT, "courses.json");
 const LOCKS_FILE = path.join(ROOT, "locks.json");
 const FEEDBACK_FILE = path.join(ROOT, "feedback.json"); // 사용자 의견(제안/신고) — courses.json과 분리
 const FEEDBACK_MAX = 1000; // 보관 상한 (오래된 건 잘림)
+const VIEWS_FILE = path.join(ROOT, "views.json"); // 대회별 조회수 { eventId: count } — courses.json과 분리
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "marathangisspicy";
 // 편집 락 TTL. 하트비트(클라가 주기적으로 갱신)가 끊기면 이만큼 뒤 자동 만료 →
 // 탭을 그냥 닫아도 락이 영구히 박히지 않음.
@@ -58,6 +59,14 @@ const fileStore = {
   },
   async writeFeedback(list) {
     fs.writeFileSync(FEEDBACK_FILE, JSON.stringify(list, null, 2) + "\n", "utf-8");
+  },
+  // 대회별 조회수도 별도 파일
+  async readViews() {
+    try { return JSON.parse(fs.readFileSync(VIEWS_FILE, "utf-8")); }
+    catch { return {}; }
+  },
+  async writeViews(map) {
+    fs.writeFileSync(VIEWS_FILE, JSON.stringify(map, null, 2) + "\n", "utf-8");
   },
 };
 let store = fileStore;
@@ -196,6 +205,17 @@ async function handleApi({ method, pathname, headers, body }) {
       await store.writeFeedback(list.slice(0, FEEDBACK_MAX));
       return json(201, { ok: true });
     } catch (e) { return json(400, { error: e.message }); }
+  }
+
+  // GET /api/views → 대회별 조회수 맵 (공개)
+  if (parts[1] === "views" && method === "GET" && parts.length === 2)
+    return json(200, await store.readViews());
+  // POST /api/views/:id → 조회수 +1 (공개). 말풍선 열 때마다 호출.
+  if (parts[1] === "views" && method === "POST" && id) {
+    const views = await store.readViews();
+    views[id] = (Number(views[id]) || 0) + 1;
+    await store.writeViews(views);
+    return json(200, { count: views[id] });
   }
 
   // 이하 쓰기 + 락 API는 비밀번호 필요

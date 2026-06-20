@@ -40,6 +40,7 @@ Resources:
           COURSES_KEY: courses.json
           LOCKS_KEY: locks.json
           FEEDBACK_KEY: feedback.json
+          VIEWS_KEY: views.json
           ADMIN_PASSWORD: !Ref AdminPassword
       Policies:
         - S3CrudPolicy:

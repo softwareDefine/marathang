@@ -464,6 +464,8 @@ async function loadList() {
   const res = await fetch(API);
   const list = res.ok ? await res.json() : [];
   coursesCache = list;
+  let views = {};
+  try { const vr = await fetch("/api/views"); if (vr.ok) views = await vr.json(); } catch {}
   const ul = document.getElementById("list");
   document.getElementById("count").textContent = "(" + list.length + ")";
   ul.innerHTML = "";
@@ -483,7 +485,8 @@ async function loadList() {
       "  </div>" +
       '  <div class="admin-row__meta">' +
       escapeHtml(c.place || "") + " · " + escapeHtml(c.date || "") +
-      " · 거리 " + vs.length + "개: " + escapeHtml(dists) + "</div>" +
+      " · 거리 " + vs.length + "개: " + escapeHtml(dists) +
+      " · 조회 " + (Number(views[c.id]) || 0) + "</div>" +
       "</div>" +
       '<div class="admin-row__actions">' +
       '  <button class="btn btn--ghost" data-act="edit">수정</button>' +

@@ -141,20 +141,7 @@ function initMap() {
 
       // 인포윈도우 (대회 정보 + 이 거리)
       const iw = new naver.maps.InfoWindow({
-        content:
-          '<div class="iw">' +
-          '<b class="iw__title">' + event.name + "</b>" +
-          '<div class="iw__rows">' +
-          '<div class="iw__row"><span class="iw__label">장소</span>' + event.place + "</div>" +
-          '<div class="iw__row"><span class="iw__label">거리</span>' + v.distance + "</div>" +
-          '<div class="iw__row"><span class="iw__label">일정</span>' + event.date + "</div>" +
-          '<div class="iw__row"><span class="iw__label">참가비</span>' + event.fee + "</div>" +
-          "</div>" +
-          (event.url && event.url !== "#"
-            ? '<a class="iw__link" href="' + event.url + '" target="_blank" rel="noopener">공식 사이트</a>'
-            : "") +
-          '<a class="iw__link iw__gpx" href="#" data-vid="' + v.vid + '">GPX 다운로드</a>' +
-          "</div>",
+        content: iwContent(event, v),
         backgroundColor: "transparent",
         borderWidth: 0,
         anchorColor: "#1f242e",
@@ -163,6 +150,10 @@ function initMap() {
       });
       naver.maps.Event.addListener(marker, "click", () => {
         iw.open(map, marker);
+        // 말풍선 열 때마다 조회수 +1 → 새 값으로 내용 갱신
+        bumpView(event.id).then((count) => {
+          if (count != null) { VIEWS[event.id] = count; iw.setContent(iwContent(event, v)); }
+        });
       });
 
       overlays[v.vid] = { polyline, marker, infowindow: iw };
@@ -818,6 +809,41 @@ function loadCourses() {
     });
 }
 
+// ── 조회수 ──────────────────────────────────────────────────────
+const VIEWS = {}; // eventId -> count
+// 말풍선(InfoWindow) 내용 빌더 (조회수 포함). 열 때 setContent로 갱신용.
+function iwContent(event, v) {
+  const views = VIEWS[event.id] || 0;
+  return '<div class="iw">' +
+    '<b class="iw__title">' + event.name + "</b>" +
+    '<div class="iw__rows">' +
+    '<div class="iw__row"><span class="iw__label">장소</span>' + event.place + "</div>" +
+    '<div class="iw__row"><span class="iw__label">거리</span>' + v.distance + "</div>" +
+    '<div class="iw__row"><span class="iw__label">일정</span>' + event.date + "</div>" +
+    '<div class="iw__row"><span class="iw__label">참가비</span>' + event.fee + "</div>" +
+    '<div class="iw__row"><span class="iw__label">조회</span>' + views + "</div>" +
+    "</div>" +
+    (event.url && event.url !== "#"
+      ? '<a class="iw__link" href="' + event.url + '" target="_blank" rel="noopener">공식 사이트</a>'
+      : "") +
+    '<a class="iw__link iw__gpx" href="#" data-vid="' + v.vid + '">GPX 다운로드</a>' +
+    "</div>";
+}
+// 조회수 +1 (말풍선 열 때). 새 카운트 반환(실패 시 null).
+function bumpView(eid) {
+  return fetch("/api/views/" + encodeURIComponent(eid), { method: "POST" })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => (j ? j.count : null))
+    .catch(() => null);
+}
+// 부팅 시 현재 조회수 맵 로드 (말풍선 첫 표시에 반영)
+function loadViews() {
+  return fetch("/api/views")
+    .then((r) => (r.ok ? r.json() : null))
+    .then((m) => { if (m && typeof m === "object") Object.assign(VIEWS, m); })
+    .catch(() => {});
+}
+
 // ── GPX 다운로드 ────────────────────────────────────────────────
 const GPX_INDEX = {}; // vid -> { name, path } (InfoWindow 다운로드용)
 function escXml(s) {
@@ -929,6 +955,7 @@ setupFeedback();
 
 // 부트스트랩
 loadCourses()
+  .then(loadViews)
   .then(loadNaverSdk)
   .then(initMap)
   .catch((err) => {

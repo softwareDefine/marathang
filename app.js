@@ -604,7 +604,6 @@ function buildSidebar(setVisible, overlays, map, naver) {
   // 정렬: 선택 기준대로 li를 재배치 ("등록순"=원래 순서)
   const sortSel = document.getElementById("sort-select");
   if (sortSel) {
-    const minDistOf = (e) => (e.distancesKm.length ? Math.min(...e.distancesKm) : Infinity);
     const feeOf = (e) => (e.feeMin == null ? Infinity : e.feeMin);
     // 내 위치 → 대회 출발점(첫 거리의 start) 거리(km). 위치/좌표 없으면 Infinity(뒤로)
     const nearOf = (e) => {
@@ -615,7 +614,6 @@ function buildSidebar(setVisible, overlays, map, naver) {
     const sorters = {
       name: (a, b) => a.event.name.localeCompare(b.event.name, "ko"),
       date: (a, b) => (a.event.date || "9999-99-99").localeCompare(b.event.date || "9999-99-99"),
-      distance: (a, b) => minDistOf(a.event) - minDistOf(b.event),
       fee: (a, b) => feeOf(a.event) - feeOf(b.event),
       views: (a, b) => (VIEWS[b.event.id] || 0) - (VIEWS[a.event.id] || 0),
       near: (a, b) => nearOf(a.event) - nearOf(b.event),

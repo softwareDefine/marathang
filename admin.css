@@ -135,8 +135,15 @@ body.admin { height: auto; overflow: auto; }
   border-radius: 12px;
 }
 .vrow.is-armed { border-color: var(--accent); }
-.vrow__top { display: flex; align-items: center; gap: 8px; }
-.vrow__top .vrow__dist { flex: 1; }
+.vrow__top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.vrow__top .vrow__dist { flex: 1 1 130px; min-width: 110px; }
+/* 색 스와치: 좁게 눌리지 않게 고정 크기 + 패딩 최소화해 색이 잘 보이게 */
+.vrow__color {
+  flex: none;
+  width: 48px;
+  height: 36px;
+  padding: 2px;
+}
 /* 거리별 코스 순서 이동 */
 .vrow__order { display: flex; flex-direction: column; gap: 2px; flex: none; }
 .vrow__move {

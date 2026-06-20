@@ -75,3 +75,11 @@ SDK는 `submodules=panorama`로 로드 — 거리뷰(파노라마) 기능 때문
 좌표가 공식 GPX가 아니면 출발지·거리 기반 **추정 경로**. 공식 경로는 어드민에서 거리별로 GPX 업로드(또는 지도에서 직접 그리기)하면 `courses.json`에 저장됨.
 
 서버를 띄우면 **`courses.json`이 source of truth**, `data.js`는 폴백 시드라 둘이 drift할 수 있음. `courses.backup.json`은 지난 대회 삭제 전 백업.
+
+## AWS 계정 / IAM
+
+> ⚠️ **비밀(액세스 키/시크릿/비밀번호)은 여기에 적지 않는다.** 자격증명은 `~/.aws`에만 두고 git에 커밋 금지. 이 절은 어느 계정에 무엇이 있는지 식별용 메모.
+
+- **이 머신 기본 자격증명** — 계정 `603571288857`, IAM 유저 `adminUser` (`arn:aws:iam::603571288857:user/adminUser`, 생성 2026-05-17), 리전 `ap-northeast-2`. 인증은 비밀번호가 아니라 **액세스 키**(CLI)로 함.
+- **실제 marathang 배포 계정은 `574748894595`** — 머신 기본값(603571288857)과 다름. **S3/Lambda 등 배포·데이터 작업 전에 `aws sts get-caller-identity`로 계정부터 확인할 것.** (라이브 S3 `courses.json`은 명시적 승인 없이 덮어쓰지 않기)
+- IAM 유저 **로그인 비밀번호는 AWS가 평문 조회 불가**(단방향 해시). 모를 땐 `aws iam update-login-profile`로 재설정만 가능. CLI 작업엔 비밀번호 불필요.

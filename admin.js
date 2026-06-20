@@ -7,9 +7,28 @@
 
 const NAVER_CLIENT_ID = "22szac44wv"; // app.js와 동일 키
 const API = "/api/courses";
+const LOCKS_API = "/api/locks";
 const PW_KEY = "marathang_admin_pw";
+const OWNER_KEY = "marathang_edit_owner"; // 이 기기(브라우저)의 편집자 식별 토큰
+const NAME_KEY = "marathang_editor_name"; // 화면에 보일 편집자 이름
 
 let pw = sessionStorage.getItem(PW_KEY) || "";
+// 편집자 식별 토큰: 기기(브라우저)마다 고유하게 localStorage에 고정.
+// 브라우저는 MAC 주소를 못 읽으므로, 그 등가물로 기기 단위 안정 ID를 쓴다.
+// 새 탭·새로고침·브라우저 재시작에도 동일 owner → 자기 락에 자기가 막히는 "락 걸기 실패"가 사라짐.
+// (예전엔 sessionStorage라 탭마다 owner가 달라, 이전 세션이 잡아둔 내 락(TTL 90초)이 새 탭의 나를 차단했음)
+let owner = localStorage.getItem(OWNER_KEY) || "";
+if (!owner) {
+  const rand = (typeof crypto !== "undefined" && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  owner = "dev-" + rand;
+  localStorage.setItem(OWNER_KEY, owner);
+}
+let editorName = localStorage.getItem(NAME_KEY) || "";
+let locksCache = {};        // { courseId: {owner,name,expires} }
+let heartbeatTimer = null;  // 편집 중 락 갱신 타이머
+let locksPollTimer = null;  // 목록 락 배지 갱신 타이머
 let editingId = null;       // 수정 중인 대회 id (null=추가)
 let coursesCache = [];      // 목록 원본
 let naverReady = false;
@@ -262,11 +281,83 @@ function clearVariants() {
 }
 
 // ── 서버 통신 ───────────────────────────────────────────────────
-function api(method, url, body) {
+function api(method, url, body, opts) {
   return fetch(url, {
     method,
-    headers: { "Content-Type": "application/json", "x-admin-password": pw },
+    headers: { "Content-Type": "application/json", "x-admin-password": pw, "x-edit-owner": owner },
     body: body ? JSON.stringify(body) : undefined,
+    ...(opts || {}),
+  });
+}
+
+// ── 편집 락 ─────────────────────────────────────────────────────
+// 표시 이름: 기기 ID에서 자동 생성한 고정 라벨(사용자-XXXX). 브라우저가 MAC을 못 주므로 owner 끝 4자로 대체.
+// localStorage에 굳혀 같은 기기는 항상 같은 라벨로 보임. (직접 이름을 쓰고 싶으면 renameEditor 사용)
+function ensureName() {
+  if (editorName) return editorName;
+  const tag = owner.replace(/[^a-z0-9]/gi, "").slice(-4).toUpperCase() || "0000";
+  editorName = "사용자-" + tag;
+  localStorage.setItem(NAME_KEY, editorName);
+  return editorName;
+}
+// 원하면 콘솔/버튼에서 사람이 직접 이름 지정 (예: renameEditor("주호"))
+function renameEditor(name) {
+  editorName = String(name || "").trim() || editorName;
+  localStorage.setItem(NAME_KEY, editorName);
+  return editorName;
+}
+// 락 획득. 성공 true / 남이 잡고 있으면 false(알림)
+async function acquireLock(id) {
+  ensureName();
+  const res = await api("POST", LOCKS_API + "/" + encodeURIComponent(id), { name: editorName });
+  if (res.ok) return true;
+  if (res.status === 409) {
+    const info = await res.json().catch(() => ({}));
+    alert((info.holder || "다른 사람") + "님이 편집 중입니다. 끝난 뒤 다시 시도하세요.");
+    loadLocks();
+    return false;
+  }
+  alert("락 획득 실패: " + ((await res.json().catch(() => ({}))).error || res.status));
+  return false;
+}
+function startHeartbeat(id) {
+  stopHeartbeat();
+  heartbeatTimer = setInterval(() => {
+    api("POST", LOCKS_API + "/" + encodeURIComponent(id), { name: editorName }).catch(() => {});
+  }, 30_000); // 서버 TTL 90초 → 30초마다 갱신
+}
+function stopHeartbeat() {
+  if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+}
+function releaseLock(id, beacon) {
+  if (!id) return;
+  stopHeartbeat();
+  api("DELETE", LOCKS_API + "/" + encodeURIComponent(id), null, beacon ? { keepalive: true } : null).catch(() => {});
+}
+async function loadLocks() {
+  try {
+    const res = await api("GET", LOCKS_API);
+    locksCache = res.ok ? await res.json() : {};
+  } catch { locksCache = {}; }
+  renderLockBadges();
+}
+// 목록 행에 락 상태 반영 (남의 락이면 배지 + 버튼 비활성)
+function renderLockBadges() {
+  document.querySelectorAll(".admin-row[data-id]").forEach((li) => {
+    const id = li.getAttribute("data-id");
+    const lock = locksCache[id];
+    const badge = li.querySelector(".admin-row__lock");
+    const editBtn = li.querySelector('[data-act="edit"]');
+    const delBtn = li.querySelector('[data-act="del"]');
+    const mine = lock && lock.owner === owner;
+    const othersLock = lock && !mine;
+    if (badge) {
+      badge.hidden = !lock;
+      badge.textContent = lock ? (mine ? "내가 편집 중" : (lock.name || "다른 사람") + " 편집 중") : "";
+      badge.classList.toggle("admin-row__lock--mine", !!mine);
+    }
+    if (editBtn) editBtn.disabled = !!othersLock;
+    if (delBtn) delBtn.disabled = !!othersLock;
   });
 }
 async function loadList() {
@@ -283,10 +374,13 @@ async function loadList() {
     const color = (vs[0] && vs[0].color) || "#888";
     const li = document.createElement("li");
     li.className = "admin-row";
+    li.setAttribute("data-id", c.id);
     li.innerHTML =
       '<span class="admin-row__dot" style="background:' + color + '"></span>' +
       '<div class="admin-row__body">' +
-      '  <div class="admin-row__name">' + escapeHtml(c.name) + "</div>" +
+      '  <div class="admin-row__name">' + escapeHtml(c.name) +
+      '    <span class="admin-row__lock" hidden></span>' +
+      "  </div>" +
       '  <div class="admin-row__meta">' +
       escapeHtml(c.place || "") + " · " + escapeHtml(c.date || "") +
       " · 거리 " + vs.length + "개: " + escapeHtml(dists) + "</div>" +
@@ -299,6 +393,7 @@ async function loadList() {
     li.querySelector('[data-act="del"]').addEventListener("click", () => removeCourse(c.id, c.name));
     ul.appendChild(li);
   });
+  loadLocks(); // 방금 그린 행에 락 배지 입히기
 }
 async function removeCourse(id, name) {
   if (!confirm('"' + name + '" 대회를 삭제할까요?')) return;
@@ -308,9 +403,12 @@ async function removeCourse(id, name) {
 }
 
 // ── 추가/수정 ───────────────────────────────────────────────────
-function startEdit(id) {
+async function startEdit(id) {
   const c = coursesCache.find((x) => x.id === id);
   if (!c) return;
+  if (editingId && editingId !== id) releaseLock(editingId); // 다른 걸 편집 중이었으면 그 락부터 놓기
+  if (!(await acquireLock(id))) return; // 남이 편집 중이면 진입 차단
+  startHeartbeat(id);
   clearVariants();
   const form = document.getElementById("course-form");
   form.name.value = c.name || "";
@@ -331,6 +429,7 @@ function startEdit(id) {
   document.querySelector(".admin__main").scrollIntoView({ behavior: "smooth" });
 }
 function resetForm() {
+  if (editingId) releaseLock(editingId); // 취소/저장 시 락 해제
   document.getElementById("course-form").reset();
   editingId = null;
   document.getElementById("form-title").textContent = "마라톤 추가";
@@ -383,6 +482,7 @@ async function showApp() {
   document.getElementById("login").hidden = true;
   document.getElementById("app").hidden = false;
   loadList();
+  if (!locksPollTimer) locksPollTimer = setInterval(loadLocks, 12_000); // 남의 락 변화 반영
   await loadNaver();
   ensureMap();
   if (!variants.length) addVariantRow();
@@ -402,9 +502,12 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
   }
 });
 document.getElementById("logout").addEventListener("click", () => {
+  if (editingId) releaseLock(editingId);
   sessionStorage.removeItem(PW_KEY);
   location.reload();
 });
+// 탭 닫기/이동 시 락 해제 시도 (실패해도 TTL로 자동 만료됨)
+window.addEventListener("pagehide", () => { if (editingId) releaseLock(editingId, true); });
 document.getElementById("add-variant").addEventListener("click", () => addVariantRow());
 document.getElementById("course-form").addEventListener("submit", submitForm);
 document.getElementById("cancel-edit").addEventListener("click", resetForm);

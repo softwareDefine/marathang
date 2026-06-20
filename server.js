@@ -14,7 +14,11 @@ const path = require("path");
 
 const ROOT = __dirname;
 const DATA_FILE = path.join(ROOT, "courses.json");
+const LOCKS_FILE = path.join(ROOT, "locks.json");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "marathangisspicy";
+// 편집 락 TTL. 하트비트(클라가 주기적으로 갱신)가 끊기면 이만큼 뒤 자동 만료 →
+// 탭을 그냥 닫아도 락이 영구히 박히지 않음.
+const LOCK_TTL_MS = 90_000;
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -37,6 +41,14 @@ const fileStore = {
   async write(list) {
     fs.writeFileSync(DATA_FILE, JSON.stringify(list, null, 2) + "\n", "utf-8");
   },
+  // 편집 락은 courses.json과 분리된 별도 파일에 저장 (코스 데이터 오염 방지)
+  async readLocks() {
+    try { return JSON.parse(fs.readFileSync(LOCKS_FILE, "utf-8")); }
+    catch { return {}; }
+  },
+  async writeLocks(map) {
+    fs.writeFileSync(LOCKS_FILE, JSON.stringify(map, null, 2) + "\n", "utf-8");
+  },
 };
 let store = fileStore;
 function setStore(s) { store = s; }
@@ -55,6 +67,28 @@ function json(status, obj) {
     headers: { "Content-Type": "application/json; charset=utf-8" },
     body: JSON.stringify(obj),
   };
+}
+
+// ── 편집 락 ─────────────────────────────────────────────────────
+// 만료된 락을 걸러낸 새 map 반환 (저장소를 읽을 때마다 청소)
+function pruneLocks(map, now) {
+  const out = {};
+  for (const id in (map || {})) {
+    if (map[id] && map[id].expires > now) out[id] = map[id];
+  }
+  return out;
+}
+// 현재 유효한 락 map을 읽어 만료분 정리까지 한 결과를 돌려줌
+async function activeLocks() {
+  const now = Date.now();
+  const pruned = pruneLocks(await store.readLocks(), now);
+  return pruned;
+}
+// id의 락이 owner의 것이 아니면 holder 정보를, 본인 것이거나 비어있으면 null
+function lockBlocker(locks, id, owner) {
+  const l = locks[id];
+  if (l && l.owner !== owner) return l;
+  return null;
 }
 
 // 경로 좌표 정규화 → [[lat,lng], ...] (유효한 것만)
@@ -110,15 +144,43 @@ async function handleApi({ method, pathname, headers, body }) {
   const parts = pathname.split("/").filter(Boolean); // ["api","courses",":id?"]
   const id = decodeURIComponent(parts[2] || "");
   const isAuthed = (headers["x-admin-password"] || "") === ADMIN_PASSWORD;
+  const owner = String(headers["x-edit-owner"] || "");
 
   // GET /api/auth → 비밀번호 확인
   if (parts[1] === "auth") return json(isAuthed ? 200 : 401, { ok: isAuthed });
 
   // GET /api/courses → 목록 (공개)
-  if (method === "GET" && parts.length === 2) return json(200, await store.read());
+  if (method === "GET" && parts.length === 2 && parts[1] === "courses") return json(200, await store.read());
 
-  // 이하 쓰기는 비밀번호 필요
-  if (method !== "GET" && !isAuthed) return json(401, { error: "비밀번호가 올바르지 않습니다." });
+  // 이하 쓰기 + 락 API는 비밀번호 필요
+  if (!(method === "GET" && parts[1] === "courses") && !isAuthed)
+    return json(401, { error: "비밀번호가 올바르지 않습니다." });
+
+  // ── 편집 락 API (어드민 전용) ──────────────────────────────────
+  // GET /api/locks → 현재 유효한 락 map
+  if (parts[1] === "locks" && method === "GET" && parts.length === 2)
+    return json(200, await activeLocks());
+  // POST /api/locks/:id → 락 획득/갱신(하트비트). body { name }
+  if (parts[1] === "locks" && method === "POST" && id) {
+    if (!owner) return json(400, { error: "x-edit-owner 헤더 필요" });
+    const locks = await activeLocks();
+    const blocker = lockBlocker(locks, id, owner);
+    if (blocker) return json(409, { error: "다른 사람이 편집 중", holder: blocker.name, expires: blocker.expires });
+    let name = "";
+    try { name = String((JSON.parse(body || "{}").name) || "").trim(); } catch {}
+    const now = Date.now();
+    locks[id] = { owner, name: name || (locks[id] && locks[id].name) || "", at: (locks[id] && locks[id].at) || now, expires: now + LOCK_TTL_MS };
+    await store.writeLocks(locks);
+    return json(200, { ok: true, lock: locks[id] });
+  }
+  // DELETE /api/locks/:id → 락 해제 (본인 것만)
+  if (parts[1] === "locks" && method === "DELETE" && id) {
+    const locks = await activeLocks();
+    const l = locks[id];
+    if (l && l.owner !== owner) return json(403, { error: "본인 락이 아님" });
+    if (l) { delete locks[id]; await store.writeLocks(locks); }
+    return json(200, { ok: true });
+  }
 
   // POST /api/courses → 추가
   if (method === "POST" && parts.length === 2) {
@@ -134,20 +196,28 @@ async function handleApi({ method, pathname, headers, body }) {
   // PUT /api/courses/:id → 수정
   if (method === "PUT" && id) {
     try {
+      const locks = await activeLocks();
+      const blocker = lockBlocker(locks, id, owner);
+      if (blocker) return json(409, { error: (blocker.name || "다른 사람") + "님이 편집 중", holder: blocker.name });
       const list = await store.read();
       const i = list.findIndex((c) => c.id === id);
       if (i === -1) return json(404, { error: "코스 없음" });
       list[i] = normalizeCourse({ ...JSON.parse(body || "{}"), id });
       await store.write(list);
+      if (locks[id]) { delete locks[id]; await store.writeLocks(locks); } // 저장 끝났으니 락 해제
       return json(200, list[i]);
     } catch (e) { return json(400, { error: e.message }); }
   }
   // DELETE /api/courses/:id → 삭제
   if (method === "DELETE" && id) {
+    const locks = await activeLocks();
+    const blocker = lockBlocker(locks, id, owner);
+    if (blocker) return json(409, { error: (blocker.name || "다른 사람") + "님이 편집 중", holder: blocker.name });
     const list = await store.read();
     const next = list.filter((c) => c.id !== id);
     if (next.length === list.length) return json(404, { error: "코스 없음" });
     await store.write(next);
+    if (locks[id]) { delete locks[id]; await store.writeLocks(locks); }
     return json(200, { ok: true });
   }
   return json(404, { error: "not found" });

@@ -6,6 +6,9 @@ package-lock.json
 .aws-sam/
 *.log
 
+# 편집 락 (런타임 상태, 커밋 안 함)
+locks.json
+
 # OS
 Thumbs.db
 .DS_Store

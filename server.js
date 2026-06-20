@@ -15,6 +15,8 @@ const path = require("path");
 const ROOT = __dirname;
 const DATA_FILE = path.join(ROOT, "courses.json");
 const LOCKS_FILE = path.join(ROOT, "locks.json");
+const FEEDBACK_FILE = path.join(ROOT, "feedback.json"); // 사용자 의견(제안/신고) — courses.json과 분리
+const FEEDBACK_MAX = 1000; // 보관 상한 (오래된 건 잘림)
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "marathangisspicy";
 // 편집 락 TTL. 하트비트(클라가 주기적으로 갱신)가 끊기면 이만큼 뒤 자동 만료 →
 // 탭을 그냥 닫아도 락이 영구히 박히지 않음.
@@ -48,6 +50,14 @@ const fileStore = {
   },
   async writeLocks(map) {
     fs.writeFileSync(LOCKS_FILE, JSON.stringify(map, null, 2) + "\n", "utf-8");
+  },
+  // 사용자 의견도 courses.json과 분리된 별도 파일
+  async readFeedback() {
+    try { return JSON.parse(fs.readFileSync(FEEDBACK_FILE, "utf-8")); }
+    catch { return []; }
+  },
+  async writeFeedback(list) {
+    fs.writeFileSync(FEEDBACK_FILE, JSON.stringify(list, null, 2) + "\n", "utf-8");
   },
 };
 let store = fileStore;
@@ -89,6 +99,24 @@ function lockBlocker(locks, id, owner) {
   const l = locks[id];
   if (l && l.owner !== owner) return l;
   return null;
+}
+
+// ── 사용자 의견(기능 제안 / 문제 신고) ──────────────────────────
+// 들어온 의견을 검증·정규화. eventName은 서버가 courses에서 찾아 채움(클라 신뢰 X).
+function normalizeFeedback(input, eventName, now) {
+  const content = String((input && input.content) || "").trim();
+  if (!content) throw new Error("내용을 입력하세요");
+  const type = (input && input.type) === "bug" ? "bug" : "suggestion";
+  return {
+    id: "fb-" + now.toString(36) + "-" + Math.random().toString(36).slice(2, 7),
+    type,
+    content: content.slice(0, 2000),
+    contact: String((input && input.contact) || "").trim().slice(0, 200),
+    eventId: String((input && input.eventId) || "").trim().slice(0, 120),
+    eventName: String(eventName || "").trim().slice(0, 120),
+    status: "new",
+    at: now,
+  };
 }
 
 // 경로 좌표 정규화 → [[lat,lng], ...] (유효한 것만)
@@ -152,6 +180,24 @@ async function handleApi({ method, pathname, headers, body }) {
   // GET /api/courses → 목록 (공개)
   if (method === "GET" && parts.length === 2 && parts[1] === "courses") return json(200, await store.read());
 
+  // POST /api/feedback → 사용자 의견 접수 (공개, 비로그인). 인증 게이트보다 먼저 처리.
+  if (parts[1] === "feedback" && method === "POST" && parts.length === 2) {
+    try {
+      const input = JSON.parse(body || "{}");
+      let eventName = "";
+      if (input && input.eventId) {
+        const courses = await store.read();
+        const c = courses.find((x) => x.id === String(input.eventId));
+        if (c) eventName = c.name;
+      }
+      const item = normalizeFeedback(input, eventName, Date.now());
+      const list = await store.readFeedback();
+      list.unshift(item);
+      await store.writeFeedback(list.slice(0, FEEDBACK_MAX));
+      return json(201, { ok: true });
+    } catch (e) { return json(400, { error: e.message }); }
+  }
+
   // 이하 쓰기 + 락 API는 비밀번호 필요
   if (!(method === "GET" && parts[1] === "courses") && !isAuthed)
     return json(401, { error: "비밀번호가 올바르지 않습니다." });
@@ -179,6 +225,30 @@ async function handleApi({ method, pathname, headers, body }) {
     const l = locks[id];
     if (l && l.owner !== owner) return json(403, { error: "본인 락이 아님" });
     if (l) { delete locks[id]; await store.writeLocks(locks); }
+    return json(200, { ok: true });
+  }
+
+  // ── 의견함 API (어드민 전용) ──────────────────────────────────
+  // GET /api/feedback → 접수 목록 (최신순)
+  if (parts[1] === "feedback" && method === "GET" && parts.length === 2)
+    return json(200, await store.readFeedback());
+  // PUT /api/feedback/:id → 상태 변경 { status: "new" | "done" }
+  if (parts[1] === "feedback" && method === "PUT" && id) {
+    const list = await store.readFeedback();
+    const i = list.findIndex((f) => f.id === id);
+    if (i === -1) return json(404, { error: "없는 의견" });
+    let status = "new";
+    try { status = JSON.parse(body || "{}").status === "done" ? "done" : "new"; } catch {}
+    list[i].status = status;
+    await store.writeFeedback(list);
+    return json(200, list[i]);
+  }
+  // DELETE /api/feedback/:id → 삭제
+  if (parts[1] === "feedback" && method === "DELETE" && id) {
+    const list = await store.readFeedback();
+    const next = list.filter((f) => f.id !== id);
+    if (next.length === list.length) return json(404, { error: "없는 의견" });
+    await store.writeFeedback(next);
     return json(200, { ok: true });
   }
 

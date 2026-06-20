@@ -113,6 +113,17 @@
         <ul id="list" class="admin-list"></ul>
       </section>
     </div>
+
+    <!-- 사용자 의견함 -->
+    <section class="panel panel--feedback">
+      <h2 class="panel__title">의견함 <span id="fb-count" class="panel__count"></span></h2>
+      <div class="fb-admin-filter">
+        <button type="button" class="chip is-on" data-fbf="all">전체</button>
+        <button type="button" class="chip" data-fbf="new">신규</button>
+        <button type="button" class="chip" data-fbf="done">처리</button>
+      </div>
+      <ul id="fb-list" class="fb-admin-list"></ul>
+    </section>
   </main>
 
   <script src="/admin.js"></script>

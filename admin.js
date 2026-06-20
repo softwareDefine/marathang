@@ -162,6 +162,10 @@ function addVariantRow(data) {
   el.className = "vrow";
   el.innerHTML =
     '<div class="vrow__top">' +
+    '  <div class="vrow__order">' +
+    '    <button type="button" class="vrow__move vrow__up" title="위로" aria-label="위로"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>' +
+    '    <button type="button" class="vrow__move vrow__down" title="아래로" aria-label="아래로"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>' +
+    '  </div>' +
     '  <input class="field__input vrow__dist" placeholder="거리 (예: 10km)">' +
     '  <input class="field__color vrow__color" type="color" value="' + (data.color || "#E8413A") + '">' +
     '  <button type="button" class="btn btn--ghost btn--sm vrow__dup" title="이 경로를 복제해 새 거리 추가">복제</button>' +
@@ -201,6 +205,8 @@ function addVariantRow(data) {
     addVariantRow({ distance: v.distEl.value, color: v.colorEl.value, path: v.path.slice() });
     fitAll();
   });
+  el.querySelector(".vrow__up").addEventListener("click", () => moveVariant(variants.indexOf(v), -1));
+  el.querySelector(".vrow__down").addEventListener("click", () => moveVariant(variants.indexOf(v), 1));
   el.querySelector(".vrow__del").addEventListener("click", () => removeVariant(variants.indexOf(v)));
   el.querySelectorAll('input[type="radio"]').forEach((r) =>
     r.addEventListener("change", () => setMode(variants.indexOf(v), el.querySelector('input[type="radio"]:checked').value))
@@ -215,7 +221,30 @@ function addVariantRow(data) {
   const idx = variants.indexOf(v);
   updateInfo(idx);
   redrawVariant(idx);
+  refreshOrderButtons();
   return v;
+}
+// 거리별 코스 순서 이동 (dir: -1 위 / +1 아래). 저장 순서 = variants 배열 순서.
+function moveVariant(i, dir) {
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= variants.length) return;
+  const tmp = variants[i]; variants[i] = variants[j]; variants[j] = tmp;
+  const container = document.getElementById("variant-rows");
+  variants.forEach((v) => container.appendChild(v.el)); // 배열 순서대로 DOM 재배치
+  // 그리기로 무장된 행 인덱스를 따라가게
+  if (drawIdx === i) drawIdx = j;
+  else if (drawIdx === j) drawIdx = i;
+  variants.forEach((v, idx) => v.el.classList.toggle("is-armed", idx === drawIdx));
+  refreshOrderButtons();
+}
+// 첫 행은 위로, 마지막 행은 아래로 비활성
+function refreshOrderButtons() {
+  variants.forEach((v, idx) => {
+    const up = v.el.querySelector(".vrow__up");
+    const down = v.el.querySelector(".vrow__down");
+    if (up) up.disabled = idx === 0;
+    if (down) down.disabled = idx === variants.length - 1;
+  });
 }
 function setMode(i, mode) {
   const v = variants[i];
@@ -248,6 +277,7 @@ function removeVariant(i) {
   if (drawIdx === i) drawIdx = -1;
   else if (drawIdx > i) drawIdx--;
   variants.forEach((vv, idx) => vv.el.classList.toggle("is-armed", idx === drawIdx));
+  refreshOrderButtons();
 }
 function handleGpx(i, file) {
   const reader = new FileReader();
@@ -473,6 +503,76 @@ function showMsg(el, text, isErr) {
   el.classList.toggle("form-msg--err", !!isErr);
 }
 
+// ── 사용자 의견함 ───────────────────────────────────────────────
+let fbCache = [];
+let fbFilter = "all"; // all | new | done
+function fbDate(ms) {
+  if (!ms) return "";
+  const d = new Date(ms);
+  const p = (n) => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+async function loadFeedback() {
+  try {
+    const res = await api("GET", "/api/feedback");
+    fbCache = res.ok ? await res.json() : [];
+  } catch { fbCache = []; }
+  renderFeedback();
+}
+function renderFeedback() {
+  const ul = document.getElementById("fb-list");
+  const countEl = document.getElementById("fb-count");
+  if (!ul) return;
+  const items = fbCache.filter((f) => fbFilter === "all" || (f.status || "new") === fbFilter);
+  const newCount = fbCache.filter((f) => (f.status || "new") !== "done").length;
+  if (countEl) countEl.textContent = newCount ? "신규 " + newCount : "";
+  ul.innerHTML = "";
+  if (!items.length) {
+    ul.innerHTML = '<li class="fb-admin-empty">접수된 의견이 없습니다.</li>';
+    return;
+  }
+  items.forEach((f) => {
+    const done = (f.status || "new") === "done";
+    const isBug = f.type === "bug";
+    const li = document.createElement("li");
+    li.className = "fb-admin-row" + (done ? " is-done" : "");
+    li.innerHTML =
+      '<div class="fb-admin-row__top">' +
+      '  <span class="fb-tag fb-tag--' + (isBug ? "bug" : "sug") + '">' + (isBug ? "문제 신고" : "기능 제안") + "</span>" +
+      '  <span class="fb-admin-row__date">' + fbDate(f.at) + "</span>" +
+      "</div>" +
+      '<div class="fb-admin-row__content">' + escapeHtml(f.content || "") + "</div>" +
+      '<div class="fb-admin-row__meta">' +
+      (f.eventName ? '<span class="fb-admin-row__chip">대회: ' + escapeHtml(f.eventName) + "</span>" : "") +
+      (f.contact ? '<span class="fb-admin-row__chip">연락처: ' + escapeHtml(f.contact) + "</span>" : "") +
+      "</div>" +
+      '<div class="fb-admin-row__actions">' +
+      '  <button type="button" class="btn btn--ghost btn--sm" data-fb-act="toggle">' + (done ? "신규로 되돌리기" : "처리완료") + "</button>" +
+      '  <button type="button" class="btn btn--ghost btn--sm" data-fb-act="del">삭제</button>' +
+      "</div>";
+    li.querySelector('[data-fb-act="toggle"]').addEventListener("click", () => toggleFeedback(f.id, done ? "new" : "done"));
+    li.querySelector('[data-fb-act="del"]').addEventListener("click", () => deleteFeedback(f.id));
+    ul.appendChild(li);
+  });
+}
+async function toggleFeedback(id, status) {
+  const res = await api("PUT", "/api/feedback/" + encodeURIComponent(id), { status });
+  if (res.ok) loadFeedback();
+}
+async function deleteFeedback(id) {
+  if (!confirm("이 의견을 삭제할까요?")) return;
+  const res = await api("DELETE", "/api/feedback/" + encodeURIComponent(id));
+  if (res.ok) loadFeedback();
+}
+// 필터 칩 (DOM에 항상 존재 → 로드 시 1회 배선)
+document.querySelectorAll("[data-fbf]").forEach((b) => {
+  b.addEventListener("click", () => {
+    fbFilter = b.getAttribute("data-fbf");
+    document.querySelectorAll("[data-fbf]").forEach((x) => x.classList.toggle("is-on", x === b));
+    renderFeedback();
+  });
+});
+
 // ── 로그인 / 부트스트랩 ─────────────────────────────────────────
 async function checkPw(candidate) {
   const res = await fetch("/api/auth", { headers: { "x-admin-password": candidate } });
@@ -482,6 +582,7 @@ async function showApp() {
   document.getElementById("login").hidden = true;
   document.getElementById("app").hidden = false;
   loadList();
+  loadFeedback();
   if (!locksPollTimer) locksPollTimer = setInterval(loadLocks, 12_000); // 남의 락 변화 반영
   await loadNaver();
   ensureMap();

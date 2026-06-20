@@ -39,6 +39,7 @@ Resources:
           COURSES_BUCKET: !Ref CoursesBucket
           COURSES_KEY: courses.json
           LOCKS_KEY: locks.json
+          FEEDBACK_KEY: feedback.json
           ADMIN_PASSWORD: !Ref AdminPassword
       Policies:
         - S3CrudPolicy:

@@ -805,6 +805,72 @@ function loadCourses() {
     });
 }
 
+// ── 사용자 의견(기능 제안 / 문제 신고) ───────────────────────────
+function setupFeedback() {
+  const openBtn = document.getElementById("fb-open");
+  const modal = document.getElementById("fb-modal");
+  const form = document.getElementById("fb-form");
+  if (!openBtn || !modal || !form) return;
+  const contentEl = document.getElementById("fb-content");
+  const contactEl = document.getElementById("fb-contact");
+  const eventSel = document.getElementById("fb-event");
+  const msg = document.getElementById("fb-msg");
+  const submitBtn = form.querySelector(".fb-submit");
+  const segBtns = form.querySelectorAll(".fb-seg__btn");
+  let type = "suggestion";
+
+  function fillEvents() {
+    if (eventSel.options.length > 1) return; // 한 번만
+    EVENTS.forEach((e) => {
+      const o = document.createElement("option");
+      o.value = e.id;
+      o.textContent = e.name;
+      eventSel.appendChild(o);
+    });
+  }
+  function setMsg(text, ok) {
+    msg.hidden = !text;
+    msg.textContent = text || "";
+    msg.classList.toggle("fb-msg--ok", !!ok);
+    msg.classList.toggle("fb-msg--err", !!text && !ok);
+  }
+  function setType(t) {
+    type = t;
+    segBtns.forEach((b) => b.classList.toggle("is-on", b.getAttribute("data-fb-type") === t));
+  }
+  function open() { fillEvents(); setMsg(""); modal.hidden = false; setTimeout(() => contentEl.focus(), 0); }
+  function close() { modal.hidden = true; }
+
+  openBtn.addEventListener("click", open);
+  modal.querySelectorAll("[data-fb-close]").forEach((el) => el.addEventListener("click", close));
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) close(); });
+  segBtns.forEach((b) => b.addEventListener("click", () => setType(b.getAttribute("data-fb-type"))));
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const content = contentEl.value.trim();
+    if (!content) { setMsg("내용을 입력하세요.", false); contentEl.focus(); return; }
+    submitBtn.disabled = true;
+    setMsg("보내는 중…");
+    fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, content, contact: contactEl.value.trim(), eventId: eventSel.value }),
+    })
+      .then((r) => r.json().then((j) => ({ ok: r.ok, j })).catch(() => ({ ok: r.ok, j: {} })))
+      .then(({ ok, j }) => {
+        if (!ok) throw new Error((j && j.error) || "전송에 실패했어요.");
+        form.reset();
+        setType("suggestion");
+        setMsg("보내주셔서 감사합니다. 잘 전달됐어요.", true);
+        setTimeout(close, 1200);
+      })
+      .catch((err) => setMsg(err.message || "전송에 실패했어요.", false))
+      .finally(() => { submitBtn.disabled = false; });
+  });
+}
+setupFeedback();
+
 // 부트스트랩
 loadCourses()
   .then(loadNaverSdk)

@@ -137,6 +137,17 @@ body.admin { height: auto; overflow: auto; }
 .vrow.is-armed { border-color: var(--accent); }
 .vrow__top { display: flex; align-items: center; gap: 8px; }
 .vrow__top .vrow__dist { flex: 1; }
+/* 거리별 코스 순서 이동 */
+.vrow__order { display: flex; flex-direction: column; gap: 2px; flex: none; }
+.vrow__move {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 18px; padding: 0;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--panel); color: var(--muted); cursor: pointer;
+}
+.vrow__move:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.vrow__move:disabled { opacity: 0.3; cursor: default; }
+.vrow__move svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .vrow__mode { display: flex; gap: 16px; font-size: 13px; color: var(--muted); }
 .vrow__mode label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
 .vrow__draw { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -259,3 +270,35 @@ body.admin { height: auto; overflow: auto; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ── 의견함 ─────────────────────────────────────────────────────── */
+.panel--feedback { margin-top: 20px; }
+.fb-admin-filter { display: flex; gap: 6px; margin-bottom: 14px; }
+.fb-admin-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.fb-admin-empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+.fb-admin-row {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--panel-2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fb-admin-row.is-done { opacity: 0.6; }
+.fb-admin-row__top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.fb-admin-row__date { font-size: 12px; color: var(--muted); }
+.fb-admin-row__content { font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.fb-admin-row__meta { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; color: var(--muted); white-space: normal; overflow: visible; }
+.fb-admin-row__chip { display: inline-block; }
+.fb-admin-row__actions { display: flex; gap: 8px; }
+
+.fb-tag {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.fb-tag--sug { background: rgba(52, 199, 89, 0.15); color: #34c759; }
+.fb-tag--bug { background: rgba(232, 65, 58, 0.15); color: var(--accent); }

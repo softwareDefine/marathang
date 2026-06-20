@@ -156,6 +156,42 @@
           <code>NAVER_CLIENT_ID</code> 값을 발급받은 키로 바꿔주세요.</p>
       </div>
     </section>
+
+    <!-- 의견 보내기 (기능 제안 / 문제 신고) -->
+    <button id="fb-open" class="fb-btn" type="button" title="기능 제안 / 문제 신고">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5z" /></svg>
+      <span class="fb-btn__label">의견</span>
+    </button>
+
+    <div id="fb-modal" class="fb-modal" hidden>
+      <div class="fb-modal__backdrop" data-fb-close></div>
+      <form id="fb-form" class="fb-modal__card">
+        <div class="fb-modal__head">
+          <h2 class="fb-modal__title">의견 보내기</h2>
+          <button type="button" class="fb-modal__x" data-fb-close aria-label="닫기">&times;</button>
+        </div>
+        <div class="fb-seg">
+          <button type="button" class="fb-seg__btn is-on" data-fb-type="suggestion">기능 제안</button>
+          <button type="button" class="fb-seg__btn" data-fb-type="bug">문제 신고</button>
+        </div>
+        <label class="fb-field">
+          <span class="fb-field__label">내용 *</span>
+          <textarea id="fb-content" class="fb-field__input" rows="5" maxlength="2000" required placeholder="개선 아이디어나 겪은 문제를 적어주세요"></textarea>
+        </label>
+        <label class="fb-field">
+          <span class="fb-field__label">관련 대회 <span class="fb-field__opt">(선택)</span></span>
+          <select id="fb-event" class="fb-field__input"><option value="">선택 안 함</option></select>
+        </label>
+        <label class="fb-field">
+          <span class="fb-field__label">연락처 <span class="fb-field__opt">(선택)</span></span>
+          <input id="fb-contact" class="fb-field__input" type="text" maxlength="200" placeholder="답장받을 이메일 등" />
+        </label>
+        <div class="fb-modal__actions">
+          <button type="submit" class="fb-submit">보내기</button>
+        </div>
+        <p id="fb-msg" class="fb-msg" hidden></p>
+      </form>
+    </div>
   </main>
 
   <footer class="footer">

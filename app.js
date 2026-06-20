@@ -129,6 +129,8 @@ function initMap() {
         strokeColor: v.color,
         strokeOpacity: 0.85,
         strokeStyle: "solid",
+        strokeLineCap: "round",   // 끝을 둥글게
+        strokeLineJoin: "round",  // 꼭짓점을 둥글게 → 각진 느낌 완화
       });
 
       // 출발 마커

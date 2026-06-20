@@ -124,6 +124,8 @@ function redrawVariant(i) {
       strokeColor: color,
       strokeWeight: 5,
       strokeOpacity: 0.9,
+      strokeLineCap: "round",
+      strokeLineJoin: "round",
     });
   }
   // 그리기 중인 행은 꼭짓점 점 표시

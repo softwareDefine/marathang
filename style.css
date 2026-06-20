@@ -892,3 +892,20 @@ textarea.fb-field__input { resize: vertical; min-height: 92px; }
 .fb-msg { margin: 0; font-size: 13px; }
 .fb-msg--ok { color: #34c759; }
 .fb-msg--err { color: var(--accent); }
+
+/* ── 코스 목록 정렬 ─────────────────────────────────────────────── */
+.sidebar__sort { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; }
+.sidebar__sort-label { font-size: 12px; color: var(--muted); flex: none; }
+.sidebar__sort select {
+  flex: 1;
+  height: 32px;
+  padding: 0 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.sidebar__sort select:focus { outline: none; border-color: var(--accent); }

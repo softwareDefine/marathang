@@ -187,43 +187,49 @@ function initMap() {
   setupMapControls(map, naver);
   setupTools(map, naver, overlays);
   setupLocate(map, naver);
+  // 처음 열 때 기본으로 내 위치 기준으로 이동 (권한 거부/실패 시 전체 코스 보기 유지)
+  locateMe(map, naver, { silent: true, zoom: 13 });
 }
 
-// 내 현위치: 버튼 클릭 시 지오로케이션으로 지도 이동 + 마커
+// 지오로케이션으로 지도를 내 위치로 이동 + 마커. opts.silent면 실패해도 알림 X(자동 호출용)
+let myLocationMarker = null;
+function locateMe(map, naver, opts) {
+  opts = opts || {};
+  const btn = opts.btn;
+  if (!navigator.geolocation) {
+    if (!opts.silent) alert("이 브라우저는 위치 기능을 지원하지 않아요.");
+    return;
+  }
+  if (btn) btn.classList.add("is-loading");
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      if (btn) btn.classList.remove("is-loading");
+      const ll = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
+      map.setCenter(ll);
+      map.setZoom(opts.zoom || 14, true);
+      if (myLocationMarker) myLocationMarker.setMap(null);
+      myLocationMarker = new naver.maps.Marker({
+        map,
+        position: ll,
+        zIndex: 1000,
+        icon: {
+          content: '<div class="me-dot"></div>',
+          anchor: new naver.maps.Point(11, 11),
+        },
+      });
+    },
+    () => {
+      if (btn) btn.classList.remove("is-loading");
+      if (!opts.silent) alert("현위치를 가져오지 못했어요. 위치 권한을 허용했는지 확인해주세요.");
+    },
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+  );
+}
+// 내 현위치 버튼: 클릭 시 내 위치로 이동
 function setupLocate(map, naver) {
   const btn = document.getElementById("locate-btn");
   if (!btn) return;
-  let marker = null;
-  btn.addEventListener("click", () => {
-    if (!navigator.geolocation) {
-      alert("이 브라우저는 위치 기능을 지원하지 않아요.");
-      return;
-    }
-    btn.classList.add("is-loading");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        btn.classList.remove("is-loading");
-        const ll = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
-        map.setCenter(ll);
-        map.setZoom(14, true);
-        if (marker) marker.setMap(null);
-        marker = new naver.maps.Marker({
-          map,
-          position: ll,
-          zIndex: 1000,
-          icon: {
-            content: '<div class="me-dot"></div>',
-            anchor: new naver.maps.Point(11, 11),
-          },
-        });
-      },
-      () => {
-        btn.classList.remove("is-loading");
-        alert("현위치를 가져오지 못했어요. 위치 권한을 허용했는지 확인해주세요.");
-      },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
-    );
-  });
+  btn.addEventListener("click", () => locateMe(map, naver, { btn, zoom: 14 }));
 }
 
 // 지도 컨트롤(지도유형·줌)을 커스텀 UI로 통일
@@ -585,6 +591,30 @@ function buildSidebar(setVisible, overlays, map, naver) {
     ul.appendChild(li);
     items.push({ event, li, variants });
   });
+
+  // 정렬: 선택 기준대로 li를 재배치 ("등록순"=원래 순서)
+  const sortSel = document.getElementById("sort-select");
+  if (sortSel) {
+    const minDistOf = (e) => (e.distancesKm.length ? Math.min(...e.distancesKm) : Infinity);
+    const feeOf = (e) => (e.feeMin == null ? Infinity : e.feeMin);
+    const sorters = {
+      name: (a, b) => a.event.name.localeCompare(b.event.name, "ko"),
+      date: (a, b) => (a.event.date || "9999-99-99").localeCompare(b.event.date || "9999-99-99"),
+      distance: (a, b) => minDistOf(a.event) - minDistOf(b.event),
+      fee: (a, b) => feeOf(a.event) - feeOf(b.event),
+      views: (a, b) => (VIEWS[b.event.id] || 0) - (VIEWS[a.event.id] || 0),
+    };
+    const applySort = () => {
+      const fn = sorters[sortSel.value];
+      const arr = items.slice();
+      if (fn) arr.sort(fn);
+      arr.forEach(({ li }) => ul.appendChild(li));
+    };
+    if (!sortSel.dataset.bound) {
+      sortSel.dataset.bound = "1";
+      sortSel.addEventListener("change", applySort);
+    }
+  }
 
   setupSearch(items, setVisible);
   setupTheme(overlays);

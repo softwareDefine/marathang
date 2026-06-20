@@ -178,6 +178,15 @@ function initMap() {
   }
   EVENTS.forEach((e) => e.variants.forEach((v) => setVisible(v.vid, true)));
 
+  // 말풍선(InfoWindow): 지도(배경)를 클릭하면 열려 있는 것 모두 닫기
+  function closeAllInfo() {
+    EVENTS.forEach((e) => e.variants.forEach((v) => {
+      const o = overlays[v.vid];
+      if (o) o.infowindow.close();
+    }));
+  }
+  naver.maps.Event.addListener(map, "click", closeAllInfo);
+
   // 전체 코스가 보이도록 화면 맞춤
   if (EVENTS.length) map.fitBounds(bounds);
 

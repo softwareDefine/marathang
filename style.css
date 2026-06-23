@@ -907,3 +907,21 @@ textarea.fb-field__input { resize: vertical; min-height: 92px; }
   cursor: pointer;
 }
 .filters__sort:focus { outline: none; border-color: var(--accent); }
+
+/* 코스 위 지점(출발/도착/반환점/급수대/km 등) 핀 — 점 중심이 좌표에 앵커됨 */
+.wp-pin { position: relative; width: 12px; height: 12px; }
+.wp-pin__dot {
+  display: block; width: 12px; height: 12px; box-sizing: border-box;
+  border-radius: 50%; background: var(--wp); border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.wp-pin__label {
+  position: absolute; left: 50%; bottom: 17px; transform: translateX(-50%);
+  white-space: nowrap; font-family: "NanumSquareNeoBold", sans-serif;
+  font-size: 11px; line-height: 1; color: #fff; background: var(--wp);
+  padding: 3px 7px; border-radius: 999px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.wp-pin__label::after {
+  content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+  border: 4px solid transparent; border-top-color: var(--wp);
+}

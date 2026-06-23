@@ -134,6 +134,19 @@ function cleanPath(p) {
     .map((q) => [Number(q[0]), Number(q[1])])
     .filter((q) => Number.isFinite(q[0]) && Number.isFinite(q[1]));
 }
+// 지점(waypoint) 타입 화이트리스트 — app.js/admin.js의 WP_TYPES와 일치
+const WP_TYPES = ["start", "finish", "turn", "water", "km", "etc"];
+// 지점 배열 정규화 → [{type,label,lat,lng}, ...] (유효한 좌표만)
+function cleanWaypoints(w) {
+  return (Array.isArray(w) ? w : [])
+    .map((q) => ({
+      type: q && WP_TYPES.includes(q.type) ? q.type : "etc",
+      label: String((q && q.label) || "").trim().slice(0, 20),
+      lat: Number(q && q.lat),
+      lng: Number(q && q.lng),
+    }))
+    .filter((q) => Number.isFinite(q.lat) && Number.isFinite(q.lng));
+}
 // 거리별 코스(variant) 하나를 검증·정규화
 function normalizeVariant(v) {
   const p = cleanPath(v && v.path);
@@ -147,6 +160,7 @@ function normalizeVariant(v) {
     color: /^#[0-9a-fA-F]{6}$/.test(v && v.color) ? v.color : "#E8413A",
     start,
     path: p,
+    waypoints: cleanWaypoints(v && v.waypoints),
   };
 }
 // 들어온 대회(event) 객체를 검증·정규화 (신모델 variants / 구모델 평면 둘 다)

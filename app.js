@@ -61,6 +61,39 @@ function parseFeeMin(str) {
   return min;
 }
 
+// 코스 위 지점(waypoint) 타입 — admin.js/server.js와 키 일치
+const WP_TYPES = {
+  start: { ko: "출발", color: "#16a34a" },
+  finish: { ko: "도착", color: "#0ea5e9" },
+  turn: { ko: "반환점", color: "#E8413A" },
+  water: { ko: "급수대", color: "#2563eb" },
+  km: { ko: "km", color: "#f59e0b" },
+  etc: { ko: "지점", color: "#6b7280" },
+};
+function escHtml(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+// 지점 핀 HTML (라벨 알약 + 점). 점 중심이 좌표에 앵커됨.
+function wpPinHtml(wp) {
+  const t = WP_TYPES[wp.type] || WP_TYPES.etc;
+  const text = (wp.label || t.ko).trim();
+  return (
+    '<div class="wp-pin" style="--wp:' + t.color + '">' +
+    '<span class="wp-pin__label">' + escHtml(text) + "</span>" +
+    '<span class="wp-pin__dot"></span></div>'
+  );
+}
+function normalizeWaypoints(w) {
+  return (Array.isArray(w) ? w : [])
+    .map((q) => ({
+      type: q && WP_TYPES[q.type] ? q.type : "etc",
+      label: (q && q.label) || "",
+      lat: Number(q && q.lat),
+      lng: Number(q && q.lng),
+    }))
+    .filter((q) => Number.isFinite(q.lat) && Number.isFinite(q.lng));
+}
+
 // 서버/data.js의 원본을 정규화. 구모델(평면 path/distance/color)도 variant 1개로 감싼다.
 function normalizeEvents(list) {
   return (Array.isArray(list) ? list : []).map((e) => {
@@ -78,6 +111,7 @@ function normalizeEvents(list) {
           Array.isArray(v.start) && v.start.length === 2
             ? v.start
             : (Array.isArray(v.path) && v.path[0]) || [37.54, 126.99],
+        waypoints: normalizeWaypoints(v.waypoints),
       }))
       .filter((v) => v.path.length >= 2);
     const scaleNum = Number(e.scale);
@@ -148,7 +182,17 @@ function initMap() {
         anchorSize: new naver.maps.Size(14, 12),
         pixelOffset: new naver.maps.Point(0, -6),
       });
-      overlays[v.vid] = { polyline, marker, infowindow: iw, event, v };
+      // 코스 위 지점(출발/도착/반환점/급수대/km 등) 핀
+      const wpMarkers = (v.waypoints || []).map(
+        (wp) =>
+          new naver.maps.Marker({
+            position: new naver.maps.LatLng(wp.lat, wp.lng),
+            icon: { content: wpPinHtml(wp), anchor: new naver.maps.Point(6, 6) },
+            zIndex: 70,
+            clickable: false,
+          })
+      );
+      overlays[v.vid] = { polyline, marker, infowindow: iw, wpMarkers, event, v };
       GPX_INDEX[v.vid] = { name: event.name + " " + v.distance, path: v.path };
       // 마커 클릭 = 말풍선 열기(+조회수). 사이드바 클릭과 동일 경로(openInfo)로 통일.
       naver.maps.Event.addListener(marker, "click", () => openInfo(map, overlays[v.vid]));
@@ -161,6 +205,7 @@ function initMap() {
     if (!o) return;
     o.polyline.setMap(on ? map : null);
     o.marker.setMap(on ? map : null);
+    o.wpMarkers.forEach((m) => m.setMap(on ? map : null));
     if (!on) o.infowindow.close();
   }
   EVENTS.forEach((e) => e.variants.forEach((v) => setVisible(v.vid, true)));

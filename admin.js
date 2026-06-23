@@ -35,7 +35,28 @@ let naverReady = false;
 let editorMap = null;
 let variants = [];          // 거리별 행 [{el, distEl, colorEl, gpxEl, drawWrap, infoEl, path, line, dots}]
 let drawIdx = -1;           // 지도 그리기로 무장된 행 인덱스 (-1=없음)
+let wpIdx = -1;             // 지점 찍기로 무장된 행 인덱스 (-1=없음). drawIdx와 배타
 let vseq = 0;               // 라디오 name 고유값
+
+// 코스 위 지점(waypoint) 타입 — app.js/server.js와 키 일치
+const WP_TYPES = {
+  start: { ko: "출발", color: "#16a34a" },
+  finish: { ko: "도착", color: "#0ea5e9" },
+  turn: { ko: "반환점", color: "#E8413A" },
+  water: { ko: "급수대", color: "#2563eb" },
+  km: { ko: "km", color: "#f59e0b" },
+  etc: { ko: "지점", color: "#6b7280" },
+};
+// 지점 핀 HTML (라벨 알약 + 점). app.js와 동일.
+function wpPinHtml(wp) {
+  const t = WP_TYPES[wp.type] || WP_TYPES.etc;
+  const text = (wp.label || t.ko).trim();
+  return (
+    '<div class="wp-pin" style="--wp:' + t.color + '">' +
+    '<span class="wp-pin__label">' + escXml(text) + "</span>" +
+    '<span class="wp-pin__dot"></span></div>'
+  );
+}
 
 // ── 거리 계산 / GPX 처리 ────────────────────────────────────────
 function meters(a, b) {
@@ -99,14 +120,73 @@ function ensureMap() {
     logoControl: false,
   });
   naver.maps.Event.addListener(editorMap, "click", (e) => {
+    const lat = e.coord.lat(), lng = e.coord.lng();
+    // 지점 찍기 모드가 우선
+    if (wpIdx >= 0 && variants[wpIdx]) {
+      const v = variants[wpIdx];
+      const type = v.wpTypeEl.value;
+      const label = v.wpLabelEl.value.trim() || (WP_TYPES[type] || WP_TYPES.etc).ko;
+      v.waypoints.push({ type, label, lat, lng });
+      redrawWaypoints(wpIdx);
+      renderWpList(wpIdx);
+      return;
+    }
     if (drawIdx >= 0 && variants[drawIdx]) {
-      variants[drawIdx].path.push([e.coord.lat(), e.coord.lng()]);
+      variants[drawIdx].path.push([lat, lng]);
       redrawVariant(drawIdx);
       updateInfo(drawIdx);
     }
   });
   setTimeout(() => naver.maps.Event.trigger(editorMap, "resize"), 60);
-  variants.forEach((_, i) => redrawVariant(i));
+  variants.forEach((_, i) => { redrawVariant(i); redrawWaypoints(i); });
+}
+// 지점 마커를 에디터 지도에 다시 그림
+function redrawWaypoints(i) {
+  const v = variants[i];
+  if (!v) return;
+  if (v.wpMarkers) v.wpMarkers.forEach((m) => m.setMap(null));
+  v.wpMarkers = [];
+  if (!naverReady || !editorMap) return;
+  const naver = window.naver;
+  v.waypoints.forEach((wp) => {
+    v.wpMarkers.push(new naver.maps.Marker({
+      map: editorMap,
+      position: new naver.maps.LatLng(wp.lat, wp.lng),
+      icon: { content: wpPinHtml(wp), anchor: new naver.maps.Point(6, 6) },
+      zIndex: 80,
+    }));
+  });
+}
+// 행 아래 지점 목록(라벨 + 삭제) 갱신
+function renderWpList(i) {
+  const v = variants[i];
+  if (!v || !v.wpListEl) return;
+  v.wpListEl.innerHTML = "";
+  v.waypoints.forEach((wp, k) => {
+    const t = WP_TYPES[wp.type] || WP_TYPES.etc;
+    const li = document.createElement("li");
+    li.innerHTML =
+      '<span class="wp-tag" style="--wp:' + t.color + '">' + escXml(wp.label || t.ko) + "</span>" +
+      '<button type="button" class="vrow__wp-del" title="이 지점 삭제" aria-label="삭제">×</button>';
+    li.querySelector(".vrow__wp-del").addEventListener("click", () => {
+      const idx = variants.indexOf(v);
+      v.waypoints.splice(k, 1);
+      redrawWaypoints(idx);
+      renderWpList(idx);
+    });
+    v.wpListEl.appendChild(li);
+  });
+}
+// 지점 찍기 모드 토글 (drawIdx와 배타)
+function armWaypoints(i) {
+  wpIdx = wpIdx === i ? -1 : i;
+  if (wpIdx >= 0 && drawIdx >= 0) { const d = drawIdx; drawIdx = -1; redrawVariant(d); }
+  variants.forEach((v, idx) => {
+    v.el.classList.toggle("is-wp-armed", idx === wpIdx);
+    v.el.classList.toggle("is-armed", idx === drawIdx);
+    const btn = v.el.querySelector(".vrow__wp-arm");
+    if (btn) btn.textContent = idx === wpIdx ? "찍는 중 — 지도 클릭으로 추가 (완료하려면 다시 클릭)" : "지도에 지점 찍기";
+  });
 }
 function redrawVariant(i) {
   const v = variants[i];
@@ -203,6 +283,21 @@ function addVariantRow(data) {
     '  <button type="button" class="btn btn--ghost btn--sm vrow__clear">지우기</button>' +
     '  <span class="vrow__armed">지도 클릭으로 점 찍는 중</span>' +
     "</div>" +
+    '<div class="vrow__wp">' +
+    '  <div class="vrow__wp-add">' +
+    '    <select class="vrow__wp-type">' +
+    '      <option value="start">출발</option>' +
+    '      <option value="finish">도착</option>' +
+    '      <option value="turn" selected>반환점</option>' +
+    '      <option value="water">급수대</option>' +
+    '      <option value="km">km표식</option>' +
+    '      <option value="etc">기타</option>' +
+    "    </select>" +
+    '    <input class="field__input vrow__wp-label" placeholder="라벨(선택, 예: 5km)">' +
+    '    <button type="button" class="btn btn--ghost btn--sm vrow__wp-arm">지도에 지점 찍기</button>' +
+    "  </div>" +
+    '  <ul class="vrow__wp-list"></ul>' +
+    "</div>" +
     '<p class="vrow__info gpx-info"></p>';
   document.getElementById("variant-rows").appendChild(el);
 
@@ -213,9 +308,18 @@ function addVariantRow(data) {
     gpxEl: el.querySelector(".vrow__gpx"),
     drawWrap: el.querySelector(".vrow__draw"),
     infoEl: el.querySelector(".vrow__info"),
+    wpTypeEl: el.querySelector(".vrow__wp-type"),
+    wpLabelEl: el.querySelector(".vrow__wp-label"),
+    wpListEl: el.querySelector(".vrow__wp-list"),
     path: Array.isArray(data.path) ? data.path.slice() : [],
+    waypoints: Array.isArray(data.waypoints)
+      ? data.waypoints
+          .map((w) => ({ type: w.type || "etc", label: w.label || "", lat: Number(w.lat), lng: Number(w.lng) }))
+          .filter((w) => Number.isFinite(w.lat) && Number.isFinite(w.lng))
+      : [],
     line: null,
     dots: [],
+    wpMarkers: [],
     // 색을 사용자가 직접 골랐는지. 기존/복제 색(data.color)이 있으면 보존, 새 행이면 거리로 자동 결정.
     colorTouched: !!(data && data.color),
   };
@@ -232,9 +336,10 @@ function addVariantRow(data) {
   v.gpxEl.addEventListener("change", () => { if (v.gpxEl.files[0]) handleGpx(variants.indexOf(v), v.gpxEl.files[0]); });
   el.querySelector(".vrow__dup").addEventListener("click", () => {
     // 같은 경로를 복제해 새 거리 행 추가 (5km/10km/하프/풀이 경로 겹칠 때)
-    addVariantRow({ distance: v.distEl.value, color: v.colorEl.value, path: v.path.slice() });
+    addVariantRow({ distance: v.distEl.value, color: v.colorEl.value, path: v.path.slice(), waypoints: v.waypoints.map((w) => ({ ...w })) });
     fitAll();
   });
+  el.querySelector(".vrow__wp-arm").addEventListener("click", () => armWaypoints(variants.indexOf(v)));
   el.querySelector(".vrow__up").addEventListener("click", () => moveVariant(variants.indexOf(v), -1));
   el.querySelector(".vrow__down").addEventListener("click", () => moveVariant(variants.indexOf(v), 1));
   el.querySelector(".vrow__gpxdl").addEventListener("click", () => downloadVariantGpx(variants.indexOf(v)));
@@ -252,6 +357,8 @@ function addVariantRow(data) {
   const idx = variants.indexOf(v);
   updateInfo(idx);
   redrawVariant(idx);
+  redrawWaypoints(idx);
+  renderWpList(idx);
   refreshOrderButtons();
   return v;
 }
@@ -262,10 +369,15 @@ function moveVariant(i, dir) {
   const tmp = variants[i]; variants[i] = variants[j]; variants[j] = tmp;
   const container = document.getElementById("variant-rows");
   variants.forEach((v) => container.appendChild(v.el)); // 배열 순서대로 DOM 재배치
-  // 그리기로 무장된 행 인덱스를 따라가게
+  // 그리기/지점 무장된 행 인덱스를 따라가게
   if (drawIdx === i) drawIdx = j;
   else if (drawIdx === j) drawIdx = i;
-  variants.forEach((v, idx) => v.el.classList.toggle("is-armed", idx === drawIdx));
+  if (wpIdx === i) wpIdx = j;
+  else if (wpIdx === j) wpIdx = i;
+  variants.forEach((v, idx) => {
+    v.el.classList.toggle("is-armed", idx === drawIdx);
+    v.el.classList.toggle("is-wp-armed", idx === wpIdx);
+  });
   refreshOrderButtons();
 }
 // 첫 행은 위로, 마지막 행은 아래로 비활성
@@ -333,6 +445,15 @@ function setMode(i, mode) {
 function arm(i) {
   const prev = drawIdx;
   drawIdx = i;
+  // 경로 그리기와 지점 찍기는 배타 — 지점 모드 해제
+  if (wpIdx >= 0) {
+    wpIdx = -1;
+    variants.forEach((v) => {
+      v.el.classList.remove("is-wp-armed");
+      const btn = v.el.querySelector(".vrow__wp-arm");
+      if (btn) btn.textContent = "지도에 지점 찍기";
+    });
+  }
   variants.forEach((v, idx) => v.el.classList.toggle("is-armed", idx === i));
   if (prev >= 0 && prev !== i && variants[prev]) redrawVariant(prev);
   redrawVariant(i);
@@ -342,11 +463,17 @@ function removeVariant(i) {
   if (!v) return;
   if (v.line) v.line.setMap(null);
   v.dots.forEach((d) => d.setMap(null));
+  if (v.wpMarkers) v.wpMarkers.forEach((m) => m.setMap(null));
   v.el.remove();
   variants.splice(i, 1);
   if (drawIdx === i) drawIdx = -1;
   else if (drawIdx > i) drawIdx--;
-  variants.forEach((vv, idx) => vv.el.classList.toggle("is-armed", idx === drawIdx));
+  if (wpIdx === i) wpIdx = -1;
+  else if (wpIdx > i) wpIdx--;
+  variants.forEach((vv, idx) => {
+    vv.el.classList.toggle("is-armed", idx === drawIdx);
+    vv.el.classList.toggle("is-wp-armed", idx === wpIdx);
+  });
   refreshOrderButtons();
 }
 function handleGpx(i, file) {
@@ -527,7 +654,7 @@ async function startEdit(id) {
   document.getElementById("cancel-edit").hidden = false;
 
   const vs = Array.isArray(c.variants) ? c.variants : [{ distance: c.distance, color: c.color, path: c.path }];
-  (vs.length ? vs : [{}]).forEach((v) => addVariantRow({ distance: v.distance, color: v.color, path: v.path }));
+  (vs.length ? vs : [{}]).forEach((v) => addVariantRow({ distance: v.distance, color: v.color, path: v.path, waypoints: v.waypoints }));
   fitAll();
   document.querySelector(".admin__main").scrollIntoView({ behavior: "smooth" });
 }
@@ -547,7 +674,7 @@ async function submitForm(e) {
   const form = e.target;
   const built = [];
   variants.forEach((v) => {
-    if (v.path.length >= 2) built.push({ distance: v.distEl.value.trim(), color: v.colorEl.value, path: v.path });
+    if (v.path.length >= 2) built.push({ distance: v.distEl.value.trim(), color: v.colorEl.value, path: v.path, waypoints: v.waypoints });
   });
   if (!built.length) {
     showMsg(msg, "경로가 있는 거리별 코스를 1개 이상 추가하세요 (GPX 업로드 또는 지도에서 그리기).", true);

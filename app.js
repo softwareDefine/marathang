@@ -215,10 +215,13 @@ function initMap() {
       naver.maps.Event.addListener(marker, "click", () => openInfo(map, o));
       naver.maps.Event.addListener(polyline, "click", () => openInfo(map, o));
 
-      // 코스에 마우스 올리면 같은 말풍선을 조회수 증가 없이 미리 보여줌(클릭으로 고정된 게 아니면).
-      naver.maps.Event.addListener(polyline, "mouseover", () => {
-        if (!o.pinned) { o.infowindow.setContent(iwContent(event, v)); o.infowindow.open(map, marker); }
+      // 코스에 마우스 올리면 같은 말풍선을 커서 위치에 조회수 증가 없이 미리 보여줌(고정된 게 아니면).
+      naver.maps.Event.addListener(polyline, "mouseover", (e) => {
+        if (!o.pinned) { o.infowindow.setContent(iwContent(event, v)); o.infowindow.open(map, e.coord); }
         try { polyline.setOptions({ strokeWeight: 8, strokeOpacity: 1 }); } catch (_) {}
+      });
+      naver.maps.Event.addListener(polyline, "mousemove", (e) => {
+        if (!o.pinned) o.infowindow.open(map, e.coord); // 커서 따라 이동
       });
       naver.maps.Event.addListener(polyline, "mouseout", () => {
         if (!o.pinned) o.infowindow.close();

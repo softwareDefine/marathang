@@ -222,6 +222,17 @@ html, body {
 }
 .zoom__btn:hover { background: var(--panel-2); }
 .zoom__btn:first-child { border-bottom: 1px solid var(--line); }
+/* 현재 줌 레벨 숫자 (+ / − 사이) */
+.zoom__level {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
 
 /* 도구 (거리재기 / 거리뷰) */
 .tools {

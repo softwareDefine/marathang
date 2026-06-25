@@ -383,6 +383,12 @@ function initMap() {
     EVENTS.forEach((e) => e.variants.forEach((v) => applyVisOne(overlays[v.vid])));
   }
   naver.maps.Event.addListener(map, "zoom_changed", applyLOD);
+
+  // 현재 줌 레벨 숫자 표시 (확대/축소 시 갱신)
+  const zlEl = document.getElementById("zoom-level");
+  function showZoom() { if (zlEl) zlEl.textContent = map.getZoom(); }
+  showZoom();
+  naver.maps.Event.addListener(map, "zoom_changed", showZoom);
   fetch("regions.json")
     .then((r) => (r.ok ? r.json() : {}))
     .then((j) => { REGIONS = j || {}; })

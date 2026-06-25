@@ -342,6 +342,7 @@ function addVariantRow(data) {
     '  <input class="field__color vrow__color" type="color" value="' + (data.color || "#E8413A") + '">' +
     '  <button type="button" class="btn btn--ghost btn--sm vrow__dup" title="이 경로를 복제해 새 거리 추가">복제</button>' +
     '  <button type="button" class="btn btn--ghost btn--sm vrow__gpxdl" title="이 거리 경로를 GPX로 다운로드">GPX</button>' +
+    '  <button type="button" class="btn btn--ghost btn--sm vrow__snap" title="현재 경로를 도로/길에 맞춰 다시 그림 (한강·공원길 포함)">도로 맞춤</button>' +
     '  <button type="button" class="btn btn--danger btn--sm vrow__del">삭제</button>' +
     "</div>" +
     '<div class="vrow__mode">' +
@@ -422,6 +423,7 @@ function addVariantRow(data) {
   el.querySelector(".vrow__up").addEventListener("click", () => moveVariant(variants.indexOf(v), -1));
   el.querySelector(".vrow__down").addEventListener("click", () => moveVariant(variants.indexOf(v), 1));
   el.querySelector(".vrow__gpxdl").addEventListener("click", () => downloadVariantGpx(variants.indexOf(v)));
+  el.querySelector(".vrow__snap").addEventListener("click", () => snapToRoad(variants.indexOf(v)));
   el.querySelector(".vrow__del").addEventListener("click", () => removeVariant(variants.indexOf(v)));
   el.querySelectorAll('input[type="radio"]').forEach((r) =>
     r.addEventListener("change", () => setMode(variants.indexOf(v), el.querySelector('input[type="radio"]:checked').value))
@@ -513,6 +515,72 @@ function downloadVariantGpx(i) {
   const dist = (v.distEl.value || "").trim();
   const name = (eventName + (dist ? " " + dist : "")).trim() || "course";
   downloadGpx(gpxFilename(name), buildGpx(name, v.path));
+}
+// ── 도로 맞춤(스냅) — BRouter trekking 경로로 현재 path를 다시 그림 ──
+const SNAP_PROFILE = "trekking"; // 한강 자전거길·공원길 등 보행/트레일 따라감
+// 경유점 솎기(너무 촘촘하면 노이즈까지 따라감) — 양 끝은 유지
+function simplifyByDist(pts, minM) {
+  if (pts.length <= 2) return pts.slice();
+  const out = [pts[0]]; let last = pts[0];
+  for (let k = 1; k < pts.length - 1; k++) {
+    if (meters(last, pts[k]) >= minM) { out.push(pts[k]); last = pts[k]; }
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
+// 경유점 한 묶음(≤20)을 BRouter로 라우팅 → [[lat,lng],...]
+async function brouterLeg(wps) {
+  const ll = wps.map((p) => p[1] + "," + p[0]).join("|"); // BRouter는 lon,lat
+  const url = "https://brouter.de/brouter?lonlats=" + ll + "&profile=" + SNAP_PROFILE + "&alternativeidx=0&format=geojson";
+  const r = await fetch(url);
+  if (!r.ok) throw new Error("BRouter " + r.status);
+  const g = await r.json();
+  const coords = g && g.features && g.features[0] && g.features[0].geometry.coordinates;
+  if (!coords || !coords.length) throw new Error("경로 없음");
+  return coords.map((c) => [c[1], c[0]]);
+}
+// 많은 경유점은 청크(겹침 1)로 나눠 호출 후 이어붙임
+async function routeThrough(wps) {
+  const CHUNK = 20;
+  let out = [];
+  for (let s = 0; s < wps.length - 1; s += CHUNK - 1) {
+    const seg = wps.slice(s, s + CHUNK);
+    if (seg.length < 2) break;
+    const leg = await brouterLeg(seg);
+    if (out.length && leg.length) leg.shift(); // 이음매 좌표 중복 제거
+    out = out.concat(leg);
+  }
+  return out;
+}
+async function snapToRoad(i) {
+  const v = variants[i];
+  if (!v) return;
+  const btn = v.el.querySelector(".vrow__snap");
+  // 이미 맞춤 적용 상태면 → 취소(원복)
+  if (v._snapBackup) {
+    v.path = v._snapBackup; v._snapBackup = null;
+    if (btn) btn.textContent = "도로 맞춤";
+    redrawVariant(i); updateInfo(i);
+    return;
+  }
+  if (v.path.length < 2) { alert("먼저 경로를 그리거나 GPX를 올리세요."); return; }
+  const wps = simplifyByDist(v.path, 120);
+  if (btn) { btn.disabled = true; btn.textContent = "맞추는 중…"; }
+  try {
+    const snapped = await routeThrough(wps);
+    if (snapped && snapped.length >= 2) {
+      v._snapBackup = v.path;
+      v.path = snapped;
+      redrawVariant(i); updateInfo(i);
+      if (btn) btn.textContent = "맞춤 취소";
+    } else {
+      alert("도로 경로를 찾지 못했어요. 점을 조금 더 촘촘히 찍어보세요.");
+    }
+  } catch (e) {
+    alert("도로 맞춤 실패: " + e.message + "\n(BRouter 응답 문제일 수 있어요. 잠시 후 다시 시도)");
+  } finally {
+    if (btn) { btn.disabled = false; if (!v._snapBackup) btn.textContent = "도로 맞춤"; }
+  }
 }
 function setMode(i, mode) {
   const v = variants[i];

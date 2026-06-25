@@ -264,12 +264,14 @@ function initMap() {
   });
 
   // 코스 표시 = 사이드바 토글(userOn) AND 줌 게이트(coursesShown, 줌≥10)
+  // 출발 배번호판은 따로 게이트(bibsShown, 줌≤10에서만 — 11부터 숨김)
   let coursesShown = true;
+  let bibsShown = true;
   function applyVisOne(o) {
     if (!o) return;
     const show = o.userOn !== false && coursesShown;
     o.polyline.setMap(show ? map : null);
-    o.marker.setMap(show ? map : null);
+    o.marker.setMap(show && bibsShown ? map : null);
     o.wpMarkers.forEach((m) => m.setMap(show ? map : null));
     if (!show) { o.pinned = false; o.infowindow.close(); }
   }
@@ -378,6 +380,7 @@ function initMap() {
   function applyLOD() {
     const z = map.getZoom();
     coursesShown = z >= 10;
+    bibsShown = z <= 10; // 11부터 배번호판 숨김
     aggMarkers.sido.forEach((m) => m.setMap(z <= 7 ? map : null));
     aggMarkers.sigungu.forEach((m) => m.setMap(z >= 8 && z <= 9 ? map : null));
     EVENTS.forEach((e) => e.variants.forEach((v) => applyVisOne(overlays[v.vid])));

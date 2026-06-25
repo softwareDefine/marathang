@@ -83,6 +83,34 @@ function wpPinHtml(wp) {
     '<span class="wp-pin__dot"></span></div>'
   );
 }
+// 출발 마커 — 마라톤 배번호판. 색 밴드 + 거리 숫자. 점 중심이 좌표에 앵커됨.
+function bibHtml(event, v) {
+  const num = (v.distance || "START").trim();
+  return (
+    '<div class="bib-pin">' +
+    '<div class="bib" style="--bib:' + v.color + '">' +
+    '<span class="bib__top">출발</span>' +
+    '<span class="bib__num">' + escHtml(num) + "</span>" +
+    "</div>" +
+    '<span class="bib-pin__dot" style="--bib:' + v.color + '"></span>' +
+    "</div>"
+  );
+}
+// 코스 hover 툴팁 내용 (가벼운 정보 — 조회수/링크 없음)
+function hoverContent(event, v) {
+  const row = (label, val) =>
+    val ? '<div class="iw__row"><span class="iw__label">' + label + "</span>" + escHtml(val) + "</div>" : "";
+  return (
+    '<div class="iw iw--hover">' +
+    '<b class="iw__title">' + escHtml(event.name) + "</b>" +
+    '<div class="iw__rows">' +
+    row("장소", event.place) +
+    row("거리", v.distance) +
+    row("일정", event.date) +
+    row("참가비", event.fee) +
+    "</div></div>"
+  );
+}
 function normalizeWaypoints(w) {
   return (Array.isArray(w) ? w : [])
     .map((q) => ({
@@ -149,6 +177,16 @@ function initMap() {
   const overlays = {}; // vid -> { polyline, marker, infowindow }
   const bounds = new naver.maps.LatLngBounds();
 
+  // 코스에 마우스 올렸을 때 뜨는 정보 툴팁(조회수 증가 안 함). 모든 코스 공용 1개.
+  const hoverIW = new naver.maps.InfoWindow({
+    content: "",
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    anchorColor: "#1f242e",
+    anchorSize: new naver.maps.Size(14, 12),
+    pixelOffset: new naver.maps.Point(0, -6),
+  });
+
   EVENTS.forEach((event) => {
     event.variants.forEach((v) => {
       const linePath = v.path.map(
@@ -167,10 +205,12 @@ function initMap() {
         strokeLineJoin: "round",  // 꼭짓점을 둥글게 → 각진 느낌 완화
       });
 
-      // 출발 마커
+      // 출발 마커 — 마라톤 배번호판 모양
       const marker = new naver.maps.Marker({
         position: new naver.maps.LatLng(v.start[0], v.start[1]),
         title: event.name + " · " + v.distance,
+        icon: { content: bibHtml(event, v), anchor: new naver.maps.Point(6, 6) },
+        zIndex: 90,
       });
 
       // 인포윈도우 (대회 정보 + 이 거리)
@@ -195,7 +235,20 @@ function initMap() {
       overlays[v.vid] = { polyline, marker, infowindow: iw, wpMarkers, event, v };
       GPX_INDEX[v.vid] = { name: event.name + " " + v.distance, path: v.path };
       // 마커 클릭 = 말풍선 열기(+조회수). 사이드바 클릭과 동일 경로(openInfo)로 통일.
-      naver.maps.Event.addListener(marker, "click", () => openInfo(map, overlays[v.vid]));
+      naver.maps.Event.addListener(marker, "click", () => { hoverIW.close(); openInfo(map, overlays[v.vid]); });
+
+      // 코스에 마우스 올리면 마라톤 정보 툴팁 + 선 강조. 클릭하면 정식 말풍선(+조회수).
+      naver.maps.Event.addListener(polyline, "mouseover", (e) => {
+        hoverIW.setContent(hoverContent(event, v));
+        hoverIW.open(map, e.coord);
+        try { polyline.setOptions({ strokeWeight: 8, strokeOpacity: 1 }); } catch (_) {}
+      });
+      naver.maps.Event.addListener(polyline, "mousemove", (e) => hoverIW.open(map, e.coord));
+      naver.maps.Event.addListener(polyline, "mouseout", () => {
+        hoverIW.close();
+        try { polyline.setOptions({ strokeWeight: 5, strokeOpacity: 0.85 }); } catch (_) {}
+      });
+      naver.maps.Event.addListener(polyline, "click", () => { hoverIW.close(); openInfo(map, overlays[v.vid]); });
     });
   });
 

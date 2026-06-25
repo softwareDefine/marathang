@@ -925,3 +925,27 @@ textarea.fb-field__input { resize: vertical; min-height: 92px; }
   content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
   border: 4px solid transparent; border-top-color: var(--wp);
 }
+
+/* 출발 마커 — 마라톤 배번호판(bib). 점 중심이 출발 좌표에 앵커됨 */
+.bib-pin { position: relative; width: 12px; height: 12px; }
+.bib-pin__dot {
+  display: block; width: 12px; height: 12px; box-sizing: border-box;
+  border-radius: 50%; background: var(--bib); border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.bib {
+  position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+  background: #fff; border-radius: 8px; overflow: hidden; text-align: center;
+  border: 1px solid rgba(0, 0, 0, 0.18); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+.bib__top {
+  display: block; background: var(--bib); color: #fff;
+  font-family: "NanumSquareNeoBold", sans-serif; font-size: 10px; line-height: 1.5;
+  letter-spacing: 2px; padding: 1px 10px;
+}
+.bib__num {
+  display: block; color: #1a1a1a; white-space: nowrap;
+  font-family: "NanumSquareNeoHeavy", "NanumSquareNeoBold", sans-serif;
+  font-size: 17px; line-height: 1.1; padding: 4px 12px 3px;
+}
+/* hover 툴팁: 클릭 말풍선과 같은 .iw 스타일 재사용 */

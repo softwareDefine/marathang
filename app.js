@@ -343,13 +343,14 @@ function initMap() {
   const zoomHintEl = document.getElementById("zoom-hint");
   // 광역시·특별시·특별자치시(통째로 묶는 단위) — 도는 시/군으로 쪼갬
   const METROS = new Set(["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종"]);
-  // region 짧은 이름 → 정식 명칭
+  // region 짧은 이름 → 표시 이름
   const REGION_FULL = {
-    서울: "서울특별시", 부산: "부산광역시", 대구: "대구광역시", 인천: "인천광역시",
-    광주: "광주광역시", 대전: "대전광역시", 울산: "울산광역시", 세종: "세종특별자치시",
-    경기: "경기도", 강원: "강원특별자치도", 충북: "충청북도", 충남: "충청남도",
-    전북: "전북특별자치도", 전남: "전라남도", 경북: "경상북도", 경남: "경상남도", 제주: "제주특별자치도",
+    서울: "서울", 부산: "부산", 대구: "대구", 인천: "인천", 광주: "광주", 대전: "대전", 울산: "울산", 세종: "세종",
+    경기: "경기도", 강원: "강원도", 충북: "충북도", 충남: "충남도",
+    전북: "전북도", 경북: "경북도", 경남: "경남도", 제주: "제주도",
   };
+  // 통합 그룹(광역 집계에서 합칠 것) — 광주+전남 통합예정 → '광주'로
+  const REGION_MERGE = { 전남: "광주" };
   function aggLabel(name, a, kind) {
     const sub = kind === "sido"
       ? a.n + "개 대회 · " + Math.round(a.km).toLocaleString() + "km"
@@ -380,9 +381,10 @@ function initMap() {
       if (!rep) return;
       const km = (e.distancesKm || []).reduce((s, d) => s + (d || 0), 0);
       const region = e.region || "기타";
-      const full = REGION_FULL[region] || region;
-      acc(bySido, full, rep, km); // ≤8: 광역 전체 이름
-      // 9~11: 광역시는 통째(인천광역시), 도는 시/군(아산시·천안시)
+      const group = REGION_MERGE[region] || region;      // 광역 집계는 통합 그룹으로(전남→광주)
+      const full = REGION_FULL[group] || group;
+      acc(bySido, full, rep, km); // ≤9: 광역 라벨
+      // 10~11: 광역시는 통째(광주·인천), 도는 시/군(아산시·천안시). 전남은 도라 시/군으로.
       const sgg = (REGIONS[e.id] || REGIONS[e.name] || {}).sigungu;
       acc(byMid, METROS.has(region) ? full : (sgg || full), rep, km);
     });

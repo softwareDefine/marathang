@@ -96,21 +96,6 @@ function bibHtml(event, v) {
     "</div>"
   );
 }
-// 코스 hover 툴팁 내용 (가벼운 정보 — 조회수/링크 없음)
-function hoverContent(event, v) {
-  const row = (label, val) =>
-    val ? '<div class="iw__row"><span class="iw__label">' + label + "</span>" + escHtml(val) + "</div>" : "";
-  return (
-    '<div class="iw iw--hover">' +
-    '<b class="iw__title">' + escHtml(event.name) + "</b>" +
-    '<div class="iw__rows">' +
-    row("장소", event.place) +
-    row("거리", v.distance) +
-    row("일정", event.date) +
-    row("참가비", event.fee) +
-    "</div></div>"
-  );
-}
 function normalizeWaypoints(w) {
   return (Array.isArray(w) ? w : [])
     .map((q) => ({
@@ -177,16 +162,6 @@ function initMap() {
   const overlays = {}; // vid -> { polyline, marker, infowindow }
   const bounds = new naver.maps.LatLngBounds();
 
-  // 코스에 마우스 올렸을 때 뜨는 정보 툴팁(조회수 증가 안 함). 모든 코스 공용 1개.
-  const hoverIW = new naver.maps.InfoWindow({
-    content: "",
-    backgroundColor: "transparent",
-    borderWidth: 0,
-    anchorColor: "#1f242e",
-    anchorSize: new naver.maps.Size(14, 12),
-    pixelOffset: new naver.maps.Point(0, -6),
-  });
-
   EVENTS.forEach((event) => {
     event.variants.forEach((v) => {
       const linePath = v.path.map(
@@ -203,6 +178,7 @@ function initMap() {
         strokeStyle: "solid",
         strokeLineCap: "round",   // 끝을 둥글게
         strokeLineJoin: "round",  // 꼭짓점을 둥글게 → 각진 느낌 완화
+        clickable: true,          // hover/click 이벤트 수신 (없으면 마우스 이벤트 안 옴)
       });
 
       // 출발 마커 — 마라톤 배번호판 모양
@@ -232,23 +208,22 @@ function initMap() {
             clickable: false,
           })
       );
-      overlays[v.vid] = { polyline, marker, infowindow: iw, wpMarkers, event, v };
+      overlays[v.vid] = { polyline, marker, infowindow: iw, wpMarkers, event, v, pinned: false };
       GPX_INDEX[v.vid] = { name: event.name + " " + v.distance, path: v.path };
-      // 마커 클릭 = 말풍선 열기(+조회수). 사이드바 클릭과 동일 경로(openInfo)로 통일.
-      naver.maps.Event.addListener(marker, "click", () => { hoverIW.close(); openInfo(map, overlays[v.vid]); });
+      const o = overlays[v.vid];
+      // 마커/코스 클릭 = 말풍선 고정 + 조회수. 사이드바 클릭과 동일 경로(openInfo).
+      naver.maps.Event.addListener(marker, "click", () => openInfo(map, o));
+      naver.maps.Event.addListener(polyline, "click", () => openInfo(map, o));
 
-      // 코스에 마우스 올리면 마라톤 정보 툴팁 + 선 강조. 클릭하면 정식 말풍선(+조회수).
-      naver.maps.Event.addListener(polyline, "mouseover", (e) => {
-        hoverIW.setContent(hoverContent(event, v));
-        hoverIW.open(map, e.coord);
+      // 코스에 마우스 올리면 같은 말풍선을 조회수 증가 없이 미리 보여줌(클릭으로 고정된 게 아니면).
+      naver.maps.Event.addListener(polyline, "mouseover", () => {
+        if (!o.pinned) { o.infowindow.setContent(iwContent(event, v)); o.infowindow.open(map, marker); }
         try { polyline.setOptions({ strokeWeight: 8, strokeOpacity: 1 }); } catch (_) {}
       });
-      naver.maps.Event.addListener(polyline, "mousemove", (e) => hoverIW.open(map, e.coord));
       naver.maps.Event.addListener(polyline, "mouseout", () => {
-        hoverIW.close();
+        if (!o.pinned) o.infowindow.close();
         try { polyline.setOptions({ strokeWeight: 5, strokeOpacity: 0.85 }); } catch (_) {}
       });
-      naver.maps.Event.addListener(polyline, "click", () => { hoverIW.close(); openInfo(map, overlays[v.vid]); });
     });
   });
 
@@ -259,7 +234,7 @@ function initMap() {
     o.polyline.setMap(on ? map : null);
     o.marker.setMap(on ? map : null);
     o.wpMarkers.forEach((m) => m.setMap(on ? map : null));
-    if (!on) o.infowindow.close();
+    if (!on) { o.pinned = false; o.infowindow.close(); }
   }
   EVENTS.forEach((e) => e.variants.forEach((v) => setVisible(v.vid, true)));
 
@@ -267,7 +242,7 @@ function initMap() {
   function closeAllInfo() {
     EVENTS.forEach((e) => e.variants.forEach((v) => {
       const o = overlays[v.vid];
-      if (o) o.infowindow.close();
+      if (o) { o.pinned = false; o.infowindow.close(); }
     }));
   }
   naver.maps.Event.addListener(map, "click", closeAllInfo);
@@ -979,6 +954,7 @@ function iwContent(event, v) {
 // 말풍선 열기 + 조회수 +1 + 새 카운트로 내용 갱신. 마커/사이드바 클릭 공용.
 function openInfo(map, o) {
   if (!o) return;
+  o.pinned = true; // 클릭으로 연 말풍선은 마우스가 벗어나도 닫히지 않게 고정
   o.infowindow.open(map, o.marker);
   bumpView(o.event.id).then((count) => {
     if (count != null) { VIEWS[o.event.id] = count; o.infowindow.setContent(iwContent(o.event, o.v)); }

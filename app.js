@@ -211,17 +211,17 @@ function initMap() {
       overlays[v.vid] = { polyline, marker, infowindow: iw, wpMarkers, event, v, pinned: false };
       GPX_INDEX[v.vid] = { name: event.name + " " + v.distance, path: v.path };
       const o = overlays[v.vid];
-      // 마커/코스 클릭 = 말풍선 고정 + 조회수. 사이드바 클릭과 동일 경로(openInfo).
+      // 마커 클릭=출발 위치 고정, 코스 클릭=커서 위치 고정. 둘 다 조회수 +1.
       naver.maps.Event.addListener(marker, "click", () => openInfo(map, o));
-      naver.maps.Event.addListener(polyline, "click", () => openInfo(map, o));
+      naver.maps.Event.addListener(polyline, "click", (e) => openInfo(map, o, { position: e.coord }));
 
-      // 코스에 마우스 올리면 같은 말풍선을 커서 위치에 조회수 증가 없이 미리 보여줌(고정된 게 아니면).
+      // 코스에 마우스 올리면 커서 위치에 말풍선 + 조회수 +1(고정된 게 아니면). 이동은 커서 따라.
       naver.maps.Event.addListener(polyline, "mouseover", (e) => {
-        if (!o.pinned) { o.infowindow.setContent(iwContent(event, v)); o.infowindow.open(map, e.coord); }
+        if (!o.pinned) openInfo(map, o, { position: e.coord, pin: false });
         try { polyline.setOptions({ strokeWeight: 8, strokeOpacity: 1 }); } catch (_) {}
       });
       naver.maps.Event.addListener(polyline, "mousemove", (e) => {
-        if (!o.pinned) o.infowindow.open(map, e.coord); // 커서 따라 이동
+        if (!o.pinned) o.infowindow.open(map, e.coord); // 커서 따라 이동(추가 카운트 없음)
       });
       naver.maps.Event.addListener(polyline, "mouseout", () => {
         if (!o.pinned) o.infowindow.close();
@@ -964,10 +964,13 @@ function iwContent(event, v) {
     "</div>";
 }
 // 말풍선 열기 + 조회수 +1 + 새 카운트로 내용 갱신. 마커/사이드바 클릭 공용.
-function openInfo(map, o) {
+// opts.position: 말풍선 위치(기본=출발 마커). opts.pin: false면 고정 안 함(hover용).
+function openInfo(map, o, opts) {
   if (!o) return;
-  o.pinned = true; // 클릭으로 연 말풍선은 마우스가 벗어나도 닫히지 않게 고정
-  o.infowindow.open(map, o.marker);
+  opts = opts || {};
+  if (opts.pin !== false) o.pinned = true; // 클릭=고정(마우스 떠나도 안 닫힘), hover=비고정
+  o.infowindow.setContent(iwContent(o.event, o.v));
+  o.infowindow.open(map, opts.position || o.marker);
   bumpView(o.event.id).then((count) => {
     if (count != null) { VIEWS[o.event.id] = count; o.infowindow.setContent(iwContent(o.event, o.v)); }
   });

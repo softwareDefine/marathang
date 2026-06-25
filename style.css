@@ -950,3 +950,17 @@ textarea.fb-field__input { resize: vertical; min-height: 92px; }
   font-size: 17px; line-height: 1.1; padding: 4px 12px 3px;
 }
 /* hover 툴팁: 클릭 말풍선과 같은 .iw 스타일 재사용 */
+
+/* 줌별 LOD 집계 라벨(광역/시군) — 중심이 좌표에 오도록 translate */
+.agg {
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; line-height: 1.2;
+  background: rgba(18, 22, 28, 0.92); color: #fff; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 12px;
+  padding: 6px 13px; white-space: nowrap; box-shadow: 0 3px 14px rgba(0, 0, 0, 0.45);
+}
+.agg b { font-family: "NanumSquareNeoBold", sans-serif; font-size: 14px; }
+.agg span { font-size: 11px; opacity: 0.82; margin-top: 1px; }
+.agg--sido { padding: 8px 16px; border-color: var(--accent); }
+.agg--sido b { font-family: "NanumSquareNeoHeavy", "NanumSquareNeoBold", sans-serif; font-size: 17px; }
+.agg:hover { border-color: var(--accent); }

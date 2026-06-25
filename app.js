@@ -263,14 +263,21 @@ function initMap() {
     });
   });
 
-  // 처음엔 전부 켜기
+  // 코스 표시 = 사이드바 토글(userOn) AND 줌 게이트(coursesShown, 줌≥10)
+  let coursesShown = true;
+  function applyVisOne(o) {
+    if (!o) return;
+    const show = o.userOn !== false && coursesShown;
+    o.polyline.setMap(show ? map : null);
+    o.marker.setMap(show ? map : null);
+    o.wpMarkers.forEach((m) => m.setMap(show ? map : null));
+    if (!show) { o.pinned = false; o.infowindow.close(); }
+  }
   function setVisible(vid, on) {
     const o = overlays[vid];
     if (!o) return;
-    o.polyline.setMap(on ? map : null);
-    o.marker.setMap(on ? map : null);
-    o.wpMarkers.forEach((m) => m.setMap(on ? map : null));
-    if (!on) { o.pinned = false; o.infowindow.close(); }
+    o.userOn = on;
+    applyVisOne(o);
   }
   EVENTS.forEach((e) => e.variants.forEach((v) => setVisible(v.vid, true)));
 
@@ -327,6 +334,60 @@ function initMap() {
   applyOffsets();
   naver.maps.Event.addListener(map, "zoom_changed", applyOffsets);
   naver.maps.Event.once(map, "idle", applyOffsets);
+
+  // ── 줌별 LOD: 전국(≤7)=광역 집계, 8~9=시군 집계, 10+=실제 코스 ──
+  let REGIONS = {}; // eventKey -> { sido, sigungu }  (regions.json)
+  const aggMarkers = { sido: [], sigungu: [] };
+  function aggLabel(name, a, kind) {
+    const sub = kind === "sido"
+      ? a.n + "개 대회 · " + Math.round(a.km).toLocaleString() + "km"
+      : a.n + "개 대회";
+    return '<div class="agg agg--' + kind + '"><b>' + escHtml(name) + "</b><span>" + sub + "</span></div>";
+  }
+  function makeAggMarker(name, a, kind) {
+    const lat = a.lat / a.c, lng = a.lng / a.c;
+    const m = new naver.maps.Marker({
+      position: new naver.maps.LatLng(lat, lng),
+      icon: { content: aggLabel(name, a, kind), anchor: new naver.maps.Point(0, 0) },
+      zIndex: 120,
+    });
+    naver.maps.Event.addListener(m, "click", () =>
+      map.morph(new naver.maps.LatLng(lat, lng), kind === "sido" ? 9 : 11)
+    );
+    return m;
+  }
+  function buildAggregates() {
+    [].concat(aggMarkers.sido, aggMarkers.sigungu).forEach((m) => m.setMap(null));
+    const byRegion = {}, bySgg = {};
+    const acc = (bag, label, e, rep, km) => {
+      const b = (bag[label] = bag[label] || { n: 0, km: 0, lat: 0, lng: 0, c: 0 });
+      b.n++; b.km += km; b.lat += rep[0]; b.lng += rep[1]; b.c++;
+    };
+    EVENTS.forEach((e) => {
+      const rep = e.variants[0] && e.variants[0].start;
+      if (!rep) return;
+      const km = (e.distancesKm || []).reduce((s, d) => s + (d || 0), 0);
+      const region = e.region || "기타";
+      acc(byRegion, region, e, rep, km);
+      const r = REGIONS[e.id] || REGIONS[e.name] || {};
+      acc(bySgg, r.sigungu || region, e, rep, km); // 시군 모르면 광역명으로 묶음
+    });
+    aggMarkers.sido = Object.entries(byRegion).map(([n, a]) => makeAggMarker(n, a, "sido"));
+    aggMarkers.sigungu = Object.entries(bySgg).map(([n, a]) => makeAggMarker(n, a, "sigungu"));
+  }
+  function applyLOD() {
+    const z = map.getZoom();
+    coursesShown = z >= 10;
+    aggMarkers.sido.forEach((m) => m.setMap(z <= 7 ? map : null));
+    aggMarkers.sigungu.forEach((m) => m.setMap(z >= 8 && z <= 9 ? map : null));
+    EVENTS.forEach((e) => e.variants.forEach((v) => applyVisOne(overlays[v.vid])));
+  }
+  naver.maps.Event.addListener(map, "zoom_changed", applyLOD);
+  fetch("regions.json")
+    .then((r) => (r.ok ? r.json() : {}))
+    .then((j) => { REGIONS = j || {}; })
+    .catch(() => {})
+    .finally(() => { buildAggregates(); applyLOD(); });
 
   // 전체 코스가 보이도록 화면 맞춤
   if (EVENTS.length) map.fitBounds(bounds);

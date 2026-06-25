@@ -392,8 +392,8 @@ function initMap() {
     const z = map.getZoom();
     coursesShown = z >= 12;        // 12부터 실제 코스
     bibsShown = z >= 12;           // 배번호판도 12부터
-    aggMarkers.sido.forEach((m) => m.setMap(z <= 8 ? map : null));              // ~8: 광역(도·광역시·특별시)
-    aggMarkers.mid.forEach((m) => m.setMap(z >= 9 && z <= 11 ? map : null));    // 9~11: 도→시/군, 광역시→통째
+    aggMarkers.sido.forEach((m) => m.setMap(z <= 9 ? map : null));               // ~9: 광역(도·광역시·특별시)
+    aggMarkers.mid.forEach((m) => m.setMap(z >= 10 && z <= 11 ? map : null));    // 10~11: 도→시/군, 광역시→통째
     EVENTS.forEach((e) => e.variants.forEach((v) => applyVisOne(overlays[v.vid])));
   }
   naver.maps.Event.addListener(map, "zoom_changed", applyLOD);

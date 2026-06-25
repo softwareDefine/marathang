@@ -83,6 +83,28 @@ function wpPinHtml(wp) {
     '<span class="wp-pin__dot"></span></div>'
   );
 }
+// 겹침 표시용 — variant 순번을 화면 px 오프셋으로(0, +g, -g, +2g, -2g 순환, 최대 ±6px)
+function rankToPx(i) {
+  const g = 3.5;
+  const k = i % 5;            // 0..4
+  const step = Math.ceil(k / 2);   // 0,1,1,2,2
+  const sign = k % 2 === 1 ? 1 : -1;
+  return step * g * sign;
+}
+// 경로를 진행방향의 수직으로 offsetPx 만큼 어긋나게 → 겹치는 코스가 나란히 보이게
+function offsetPath(naver, geoPath, offsetPx, proj) {
+  const pts = geoPath.map(([lat, lng]) => proj.fromCoordToOffset(new naver.maps.LatLng(lat, lng)));
+  return pts.map((p, j) => {
+    const a = pts[Math.max(0, j - 1)];
+    const b = pts[Math.min(pts.length - 1, j + 1)];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    return proj.fromOffsetToCoord(
+      new naver.maps.Point(p.x + (-dy / len) * offsetPx, p.y + (dx / len) * offsetPx)
+    );
+  });
+}
+
 // 출발 마커 — 마라톤 배번호판. 색 밴드 + 거리 숫자. 점 중심이 좌표에 앵커됨.
 function bibHtml(event, v) {
   const num = (v.distance || "START").trim();
@@ -161,6 +183,7 @@ function initMap() {
   // 거리별 코스(variant) 단위로 오버레이 저장
   const overlays = {}; // vid -> { polyline, marker, infowindow }
   const bounds = new naver.maps.LatLngBounds();
+  let offsetSeq = 0; // 겹침 평행선용 순번
 
   EVENTS.forEach((event) => {
     event.variants.forEach((v) => {
@@ -208,7 +231,7 @@ function initMap() {
             clickable: false,
           })
       );
-      overlays[v.vid] = { polyline, marker, infowindow: iw, wpMarkers, event, v, pinned: false };
+      overlays[v.vid] = { polyline, marker, infowindow: iw, wpMarkers, event, v, pinned: false, offsetPx: rankToPx(offsetSeq++) };
       GPX_INDEX[v.vid] = { name: event.name + " " + v.distance, path: v.path };
       const o = overlays[v.vid];
       // 마커 클릭=출발 위치 고정, 코스 클릭=커서 위치 고정. 둘 다 조회수 +1.
@@ -258,6 +281,23 @@ function initMap() {
   }
   applyBibScale();
   naver.maps.Event.addListener(map, "zoom_changed", applyBibScale);
+
+  // 겹치는 코스를 나란히 평행선으로 — 줌마다 px 간격 일정하게 다시 계산
+  function applyOffsets() {
+    let proj = null;
+    try { proj = map.getProjection(); } catch (_) { proj = null; }
+    EVENTS.forEach((e) => e.variants.forEach((v) => {
+      const o = overlays[v.vid];
+      if (!o) return;
+      const truePath = v.path.map(([la, ln]) => new naver.maps.LatLng(la, ln));
+      if (!proj || !o.offsetPx) { o.polyline.setPath(truePath); return; }
+      try { o.polyline.setPath(offsetPath(naver, v.path, o.offsetPx, proj)); }
+      catch (_) { o.polyline.setPath(truePath); }
+    }));
+  }
+  applyOffsets();
+  naver.maps.Event.addListener(map, "zoom_changed", applyOffsets);
+  naver.maps.Event.once(map, "idle", applyOffsets);
 
   // 전체 코스가 보이도록 화면 맞춤
   if (EVENTS.length) map.fitBounds(bounds);

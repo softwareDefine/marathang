@@ -934,7 +934,8 @@ textarea.fb-field__input { resize: vertical; min-height: 92px; }
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 .bib {
-  position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: 16px;
+  transform: translateX(-50%) scale(var(--bib-scale, 1)); transform-origin: bottom center;
   background: #fff; border-radius: 8px; overflow: hidden; text-align: center;
   border: 1px solid rgba(0, 0, 0, 0.18); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
 }

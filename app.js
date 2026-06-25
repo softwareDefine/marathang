@@ -250,6 +250,15 @@ function initMap() {
   }
   naver.maps.Event.addListener(map, "click", closeAllInfo);
 
+  // 배번호판(출발 마커) 크기를 줌 레벨에 맞춰 조절 — CSS 변수 하나로 전체 적용
+  function applyBibScale() {
+    const z = map.getZoom();
+    const scale = Math.max(0.55, Math.min(1.1, 0.55 + (z - 10) * 0.09));
+    document.documentElement.style.setProperty("--bib-scale", scale.toFixed(3));
+  }
+  applyBibScale();
+  naver.maps.Event.addListener(map, "zoom_changed", applyBibScale);
+
   // 전체 코스가 보이도록 화면 맞춤
   if (EVENTS.length) map.fitBounds(bounds);
 

@@ -964,6 +964,9 @@ function iwContent(event, v) {
     "</div>";
 }
 // 말풍선 열기 + 조회수 +1 + 새 카운트로 내용 갱신. 마커/사이드바 클릭 공용.
+// 같은 코스(대회)는 이 시간 안에 다시 열려도 조회수 중복 카운트 안 함
+const VIEW_COOLDOWN_MS = 10000;
+const lastBumpAt = {}; // eventId -> ms
 // opts.position: 말풍선 위치(기본=출발 마커). opts.pin: false면 고정 안 함(hover용).
 function openInfo(map, o, opts) {
   if (!o) return;
@@ -971,6 +974,10 @@ function openInfo(map, o, opts) {
   if (opts.pin !== false) o.pinned = true; // 클릭=고정(마우스 떠나도 안 닫힘), hover=비고정
   o.infowindow.setContent(iwContent(o.event, o.v));
   o.infowindow.open(map, opts.position || o.marker);
+  // 쿨다운 안이면 카운트 생략(말풍선은 그대로 보여줌)
+  const now = Date.now();
+  if (lastBumpAt[o.event.id] && now - lastBumpAt[o.event.id] < VIEW_COOLDOWN_MS) return;
+  lastBumpAt[o.event.id] = now;
   bumpView(o.event.id).then((count) => {
     if (count != null) { VIEWS[o.event.id] = count; o.infowindow.setContent(iwContent(o.event, o.v)); }
   });

@@ -166,6 +166,15 @@ function redrawWaypoints(i) {
     }));
   });
 }
+// 경로점 좌표에 매칭된 지점(핀) 제거 — 되돌리기/지우기/구간삭제 시 고아 핀 방지
+function removeWaypointAt(v, pt) {
+  if (!pt) return false;
+  const n = v.waypoints.length;
+  v.waypoints = v.waypoints.filter(
+    (w) => !(Math.abs(w.lat - pt[0]) < 1e-9 && Math.abs(w.lng - pt[1]) < 1e-9)
+  );
+  return v.waypoints.length !== n;
+}
 // 행 아래 지점 목록(라벨 + 삭제) 갱신
 function renderWpList(i) {
   const v = variants[i];
@@ -233,7 +242,8 @@ function startSectionEdit(i) {
   const v = variants[i];
   if (!v || v.path.length < 2) { alert("먼저 경로를 그린 뒤 구간을 수정할 수 있어요."); return; }
   if (i !== drawIdx) arm(i); // 이 행을 활성 행으로
-  v.section = { phase: "pick", a: null, b: null, backup: v.path.map((p) => p.slice()) };
+  const backup = { path: v.path.map((p) => p.slice()), waypoints: v.waypoints.map((w) => ({ ...w })) };
+  v.section = { phase: "pick", a: null, b: null, backup };
   updateEditUI(i);
   redrawVariant(i);
 }
@@ -250,9 +260,14 @@ function pickAnchor(i, idx) {
   const dropHi = hi === v.path.length - 1;       // 도착점 포함 → 새로 그리는 마지막 점이 새 도착
   const head = v.path.slice(0, dropLo ? 0 : lo + 1);
   const tail = dropHi ? [] : v.path.slice(hi);
+  // 잘려나가는 구간의 점들에 매칭된 핀 제거(고아 방지). 취소하면 backup으로 복원됨.
+  const kept = new Set(head.concat(tail).map((p) => p[0] + "," + p[1]));
+  v.path.forEach((p) => { if (!kept.has(p[0] + "," + p[1])) removeWaypointAt(v, p); });
   v.section = { phase: "redraw", head, tail, mid: [], backup: v.section.backup };
   v.path = head.concat(tail);
   redrawVariant(i);
+  redrawWaypoints(i);
+  renderWpList(i);
   updateInfo(i);
   updateEditUI(i);
 }
@@ -265,13 +280,16 @@ function finishSection(i) {
   updateInfo(i);
   updateEditUI(i);
 }
-// 취소: 백업 복원
+// 취소: 백업(경로+핀) 복원
 function cancelSection(i) {
   const v = variants[i];
   if (!v || !v.section) return;
-  v.path = v.section.backup.map((p) => p.slice());
+  v.path = v.section.backup.path.map((p) => p.slice());
+  v.waypoints = v.section.backup.waypoints.map((w) => ({ ...w }));
   v.section = null;
   redrawVariant(i);
+  redrawWaypoints(i);
+  renderWpList(i);
   updateInfo(i);
   updateEditUI(i);
 }
@@ -431,17 +449,20 @@ function addVariantRow(data) {
   el.querySelector(".vrow__undo").addEventListener("click", () => {
     const idx = variants.indexOf(v);
     if (v.section && v.section.phase === "redraw") {
-      v.section.mid.pop(); // 구간 다시 그리는 중엔 새로 찍은 점만 되돌림
+      v.section.mid.pop(); // 구간 다시 그리는 중엔 새로 찍은 점만 되돌림(지점 없음)
       v.path = v.section.head.concat(v.section.mid, v.section.tail);
     } else if (!v.section) {
-      v.path.pop();
+      const popped = v.path.pop();
+      if (removeWaypointAt(v, popped)) { redrawWaypoints(idx); renderWpList(idx); } // 그 점의 핀도 같이
     }
     redrawVariant(idx); updateInfo(idx);
   });
   el.querySelector(".vrow__clear").addEventListener("click", () => {
     const idx = variants.indexOf(v);
     if (v.section) cancelSection(idx);
-    v.path = []; redrawVariant(idx); updateInfo(idx);
+    v.path = [];
+    v.waypoints = []; // 경로 지우면 거기 찍힌 핀도 전부 제거
+    redrawVariant(idx); redrawWaypoints(idx); renderWpList(idx); updateInfo(idx);
   });
   el.querySelector(".vrow__edit-start").addEventListener("click", () => startSectionEdit(variants.indexOf(v)));
   el.querySelector(".vrow__edit-done").addEventListener("click", () => finishSection(variants.indexOf(v)));

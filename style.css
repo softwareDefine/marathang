@@ -222,6 +222,17 @@ html, body {
 }
 .zoom__btn:hover { background: var(--panel-2); }
 .zoom__btn:first-child { border-bottom: 1px solid var(--line); }
+/* 너무 축소했을 때(줌 6~7) 안내 */
+.zoom-hint {
+  position: absolute; z-index: 12; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--float-bg); color: var(--text);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 12px 22px; font-size: 15px; font-weight: 700;
+  box-shadow: var(--float-shadow); pointer-events: none; white-space: nowrap;
+}
+.zoom-hint[hidden] { display: none; }
+
 /* 현재 줌 레벨 숫자 (+ / − 사이) */
 .zoom__level {
   text-align: center;

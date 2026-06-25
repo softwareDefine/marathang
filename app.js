@@ -340,6 +340,7 @@ function initMap() {
   // ── 줌별 LOD: ≤8=광역 / 9~11=도는 시군·광역시는 통째 / 12+=코스 ──
   let REGIONS = {}; // eventKey -> { sido, sigungu }  (regions.json)
   const aggMarkers = { sido: [], mid: [] };
+  const zoomHintEl = document.getElementById("zoom-hint");
   // 광역시·특별시·특별자치시(통째로 묶는 단위) — 도는 시/군으로 쪼갬
   const METROS = new Set(["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종"]);
   // region 짧은 이름 → 정식 명칭
@@ -394,6 +395,7 @@ function initMap() {
     bibsShown = z >= 12;           // 배번호판도 12부터
     aggMarkers.sido.forEach((m) => m.setMap(z <= 9 ? map : null));               // ~9: 광역(도·광역시·특별시)
     aggMarkers.mid.forEach((m) => m.setMap(z >= 10 && z <= 11 ? map : null));    // 10~11: 도→시/군, 광역시→통째
+    if (zoomHintEl) zoomHintEl.hidden = z > 7; // 6~7: 너무 축소 → 확대 안내
     EVENTS.forEach((e) => e.variants.forEach((v) => applyVisOne(overlays[v.vid])));
   }
   naver.maps.Event.addListener(map, "zoom_changed", applyLOD);

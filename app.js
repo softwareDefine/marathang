@@ -91,6 +91,16 @@ function rankToPx(i) {
   const sign = k % 2 === 1 ? 1 : -1;
   return step * g * sign;
 }
+// 경로 점들 중 target([lat,lng])에 가장 가까운 인덱스 (마커를 오프셋 선에 맞출 때)
+function nearestIdx(geoPath, target) {
+  let best = 0, bestD = Infinity;
+  for (let j = 0; j < geoPath.length; j++) {
+    const dla = geoPath[j][0] - target[0], dln = geoPath[j][1] - target[1];
+    const d = dla * dla + dln * dln;
+    if (d < bestD) { bestD = d; best = j; }
+  }
+  return best;
+}
 // 경로를 진행방향의 수직으로 offsetPx 만큼 어긋나게 → 겹치는 코스가 나란히 보이게
 function offsetPath(naver, geoPath, offsetPx, proj) {
   const pts = geoPath.map(([lat, lng]) => proj.fromCoordToOffset(new naver.maps.LatLng(lat, lng)));
@@ -282,17 +292,36 @@ function initMap() {
   applyBibScale();
   naver.maps.Event.addListener(map, "zoom_changed", applyBibScale);
 
-  // 겹치는 코스를 나란히 평행선으로 — 줌마다 px 간격 일정하게 다시 계산
+  // 겹치는 코스를 나란히 평행선으로 — 줌마다 px 간격 일정하게 다시 계산.
+  // 선뿐 아니라 출발 마커·지점 핀도 같은 오프셋으로 옮겨 선 위에 정확히 얹히게.
   function applyOffsets() {
     let proj = null;
     try { proj = map.getProjection(); } catch (_) { proj = null; }
     EVENTS.forEach((e) => e.variants.forEach((v) => {
       const o = overlays[v.vid];
       if (!o) return;
-      const truePath = v.path.map(([la, ln]) => new naver.maps.LatLng(la, ln));
-      if (!proj || !o.offsetPx) { o.polyline.setPath(truePath); return; }
-      try { o.polyline.setPath(offsetPath(naver, v.path, o.offsetPx, proj)); }
-      catch (_) { o.polyline.setPath(truePath); }
+      const trueLL = ([la, ln]) => new naver.maps.LatLng(la, ln);
+      // 오프셋 없음/투영 불가 → 전부 원좌표로
+      if (!proj || !o.offsetPx) {
+        o.polyline.setPath(v.path.map(trueLL));
+        o.marker.setPosition(trueLL(v.start));
+        o.wpMarkers.forEach((m, k) => m.setPosition(trueLL([v.waypoints[k].lat, v.waypoints[k].lng])));
+        return;
+      }
+      try {
+        const off = offsetPath(naver, v.path, o.offsetPx, proj); // v.path와 1:1 인 오프셋 좌표
+        o.polyline.setPath(off);
+        // 마커/핀: 해당 좌표에 가장 가까운 path 점의 오프셋 위치로 → 선과 정확히 일치
+        o.marker.setPosition(off[nearestIdx(v.path, v.start)] || trueLL(v.start));
+        o.wpMarkers.forEach((m, k) => {
+          const wp = v.waypoints[k];
+          m.setPosition(off[nearestIdx(v.path, [wp.lat, wp.lng])] || trueLL([wp.lat, wp.lng]));
+        });
+      } catch (_) {
+        o.polyline.setPath(v.path.map(trueLL));
+        o.marker.setPosition(trueLL(v.start));
+        o.wpMarkers.forEach((m, k) => m.setPosition(trueLL([v.waypoints[k].lat, v.waypoints[k].lng])));
+      }
     }));
   }
   applyOffsets();

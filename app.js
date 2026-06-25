@@ -337,9 +337,18 @@ function initMap() {
   naver.maps.Event.addListener(map, "zoom_changed", applyOffsets);
   naver.maps.Event.once(map, "idle", applyOffsets);
 
-  // ── 줌별 LOD: 전국(≤7)=광역 집계, 8~9=시군 집계, 10+=실제 코스 ──
+  // ── 줌별 LOD: ≤8=광역 / 9~11=도는 시군·광역시는 통째 / 12+=코스 ──
   let REGIONS = {}; // eventKey -> { sido, sigungu }  (regions.json)
-  const aggMarkers = { sido: [], sigungu: [] };
+  const aggMarkers = { sido: [], mid: [] };
+  // 광역시·특별시·특별자치시(통째로 묶는 단위) — 도는 시/군으로 쪼갬
+  const METROS = new Set(["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종"]);
+  // region 짧은 이름 → 정식 명칭
+  const REGION_FULL = {
+    서울: "서울특별시", 부산: "부산광역시", 대구: "대구광역시", 인천: "인천광역시",
+    광주: "광주광역시", 대전: "대전광역시", 울산: "울산광역시", 세종: "세종특별자치시",
+    경기: "경기도", 강원: "강원특별자치도", 충북: "충청북도", 충남: "충청남도",
+    전북: "전북특별자치도", 전남: "전라남도", 경북: "경상북도", 경남: "경상남도", 제주: "제주특별자치도",
+  };
   function aggLabel(name, a, kind) {
     const sub = kind === "sido"
       ? a.n + "개 대회 · " + Math.round(a.km).toLocaleString() + "km"
@@ -354,14 +363,14 @@ function initMap() {
       zIndex: 120,
     });
     naver.maps.Event.addListener(m, "click", () =>
-      map.morph(new naver.maps.LatLng(lat, lng), kind === "sido" ? 9 : 11)
+      map.morph(new naver.maps.LatLng(lat, lng), kind === "sido" ? 9 : 12)
     );
     return m;
   }
   function buildAggregates() {
-    [].concat(aggMarkers.sido, aggMarkers.sigungu).forEach((m) => m.setMap(null));
-    const byRegion = {}, bySgg = {};
-    const acc = (bag, label, e, rep, km) => {
+    [].concat(aggMarkers.sido, aggMarkers.mid).forEach((m) => m.setMap(null));
+    const bySido = {}, byMid = {};
+    const acc = (bag, label, rep, km) => {
       const b = (bag[label] = bag[label] || { n: 0, km: 0, lat: 0, lng: 0, c: 0 });
       b.n++; b.km += km; b.lat += rep[0]; b.lng += rep[1]; b.c++;
     };
@@ -370,19 +379,21 @@ function initMap() {
       if (!rep) return;
       const km = (e.distancesKm || []).reduce((s, d) => s + (d || 0), 0);
       const region = e.region || "기타";
-      acc(byRegion, region, e, rep, km);
-      const r = REGIONS[e.id] || REGIONS[e.name] || {};
-      acc(bySgg, r.sigungu || region, e, rep, km); // 시군 모르면 광역명으로 묶음
+      const full = REGION_FULL[region] || region;
+      acc(bySido, full, rep, km); // ≤8: 광역 전체 이름
+      // 9~11: 광역시는 통째(인천광역시), 도는 시/군(아산시·천안시)
+      const sgg = (REGIONS[e.id] || REGIONS[e.name] || {}).sigungu;
+      acc(byMid, METROS.has(region) ? full : (sgg || full), rep, km);
     });
-    aggMarkers.sido = Object.entries(byRegion).map(([n, a]) => makeAggMarker(n, a, "sido"));
-    aggMarkers.sigungu = Object.entries(bySgg).map(([n, a]) => makeAggMarker(n, a, "sigungu"));
+    aggMarkers.sido = Object.entries(bySido).map(([n, a]) => makeAggMarker(n, a, "sido"));
+    aggMarkers.mid = Object.entries(byMid).map(([n, a]) => makeAggMarker(n, a, "mid"));
   }
   function applyLOD() {
     const z = map.getZoom();
     coursesShown = z >= 12;        // 12부터 실제 코스
     bibsShown = z >= 12;           // 배번호판도 12부터
-    aggMarkers.sido.forEach((m) => m.setMap(z <= 9 ? map : null));              // ~9: 광역(도·광역시·특별시)
-    aggMarkers.sigungu.forEach((m) => m.setMap(z >= 10 && z <= 11 ? map : null)); // 10~11: 시·군·구
+    aggMarkers.sido.forEach((m) => m.setMap(z <= 8 ? map : null));              // ~8: 광역(도·광역시·특별시)
+    aggMarkers.mid.forEach((m) => m.setMap(z >= 9 && z <= 11 ? map : null));    // 9~11: 도→시/군, 광역시→통째
     EVENTS.forEach((e) => e.variants.forEach((v) => applyVisOne(overlays[v.vid])));
   }
   naver.maps.Event.addListener(map, "zoom_changed", applyLOD);

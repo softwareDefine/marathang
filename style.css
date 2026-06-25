@@ -823,7 +823,7 @@ html:not([data-theme="light"]) .map img[src*="/styles/basic/"] {
   .dist-readout { top: 118px; left: 12px; right: 12px; transform: none; width: auto; }
 
   /* 의견 버튼: 모바일에선 라벨 숨기고 아이콘만 */
-  .fb-btn { left: 12px; bottom: 12px; padding: 0; width: 44px; height: 44px; justify-content: center; }
+  .fb-btn { right: 12px; bottom: 12px; padding: 0; width: 44px; height: 44px; justify-content: center; }
   .fb-btn__label { display: none; }
   .fb-modal__card { width: auto; left: 12px; right: 12px; max-width: none; }
 }
@@ -831,7 +831,7 @@ html:not([data-theme="light"]) .map img[src*="/styles/basic/"] {
 /* ── 사용자 의견(기능 제안 / 문제 신고) ─────────────────────────── */
 .fb-btn {
   position: fixed;
-  left: 20px;
+  right: 20px;
   bottom: 20px;
   z-index: 40;
   display: inline-flex;

@@ -217,6 +217,16 @@ body.admin { height: auto; overflow: auto; }
   border: 2px solid #fff;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
+/* 구간 수정 pick 단계: 클릭 가능한 큰 점 */
+.edit-dot--pick { width: 14px; height: 14px; cursor: pointer; }
+.edit-dot--pick.is-sel { border-color: #ffd23f; box-shadow: 0 0 0 2px #ffd23f; }
+
+/* 구간 수정 컨트롤 */
+.vrow__edit { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.vrow__edit-start[hidden] { display: none; }
+.vrow__edit-active { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.vrow__edit-active[hidden] { display: none; }
+.vrow__edit-status { font-size: 12px; color: var(--accent); }
 
 /* 작은 버튼 */
 .btn--sm { height: 30px; padding: 0 10px; font-size: 12px; font-weight: 600; }

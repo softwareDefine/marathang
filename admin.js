@@ -122,6 +122,16 @@ function ensureMap() {
     const lat = e.coord.lat(), lng = e.coord.lng();
     if (drawIdx < 0 || !variants[drawIdx]) return;
     const v = variants[drawIdx];
+    // 구간 수정 중: pick 단계는 지도 배경 클릭 무시, redraw 단계는 고른 구간만 다시 그림
+    if (v.section) {
+      if (v.section.phase === "redraw") {
+        v.section.mid.push([lat, lng]);
+        v.path = v.section.head.concat(v.section.mid, v.section.tail);
+        redrawVariant(drawIdx);
+        updateInfo(drawIdx);
+      }
+      return;
+    }
     // 클릭 = 경로점 추가. 종류가 '경로점'이 아니면 같은 자리에 라벨 핀도 같이 찍고 자동 복귀.
     v.path.push([lat, lng]);
     const type = v.wpTypeEl ? v.wpTypeEl.value : "path";
@@ -196,16 +206,89 @@ function redrawVariant(i) {
       strokeLineJoin: "round",
     });
   }
-  // 그리기 중인 행은 꼭짓점 점 표시
+  // 그리기 중인 행은 꼭짓점 점 표시. 구간 수정 pick 단계면 클릭 가능한 점으로.
   if (i === drawIdx) {
-    v.path.forEach((p) => {
-      v.dots.push(new naver.maps.Marker({
+    const picking = v.section && v.section.phase === "pick";
+    v.path.forEach((p, idx) => {
+      const sel = picking && (v.section.a === idx || v.section.b === idx);
+      const dot = new naver.maps.Marker({
         map: editorMap,
         position: new naver.maps.LatLng(p[0], p[1]),
-        icon: { content: '<div class="edit-dot" style="background:' + color + '"></div>', anchor: new naver.maps.Point(5, 5) },
-      }));
+        icon: {
+          content:
+            '<div class="edit-dot' + (picking ? " edit-dot--pick" : "") + (sel ? " is-sel" : "") +
+            '" style="background:' + (sel ? "#111" : color) + '"></div>',
+          anchor: new naver.maps.Point(picking ? 7 : 5, picking ? 7 : 5),
+        },
+        zIndex: picking ? 100 : 50,
+      });
+      if (picking) naver.maps.Event.addListener(dot, "click", () => pickAnchor(i, idx));
+      v.dots.push(dot);
     });
   }
+}
+// ── 구간 다시 그리기 ────────────────────────────────────────────
+// 시작: pick 단계로 (양 끝 점 2개 클릭 대기)
+function startSectionEdit(i) {
+  const v = variants[i];
+  if (!v || v.path.length < 2) { alert("먼저 경로를 그린 뒤 구간을 수정할 수 있어요."); return; }
+  if (i !== drawIdx) arm(i); // 이 행을 활성 행으로
+  v.section = { phase: "pick", a: null, b: null, backup: v.path.map((p) => p.slice()) };
+  updateEditUI(i);
+  redrawVariant(i);
+}
+// pick 단계에서 점 클릭 → a, b 순서로 지정. 둘 다 정해지면 그 사이를 잘라 redraw 단계로.
+function pickAnchor(i, idx) {
+  const v = variants[i];
+  if (!v || !v.section || v.section.phase !== "pick") return;
+  if (v.section.a === null) { v.section.a = idx; redrawVariant(i); updateEditUI(i); return; }
+  if (idx === v.section.a) { v.section.a = null; redrawVariant(i); updateEditUI(i); return; } // 같은 점 다시 = 취소
+  v.section.b = idx;
+  const lo = Math.min(v.section.a, v.section.b);
+  const hi = Math.max(v.section.a, v.section.b);
+  const dropLo = lo === 0;                       // 출발점 포함 → 새로 그리는 첫 점이 새 출발
+  const dropHi = hi === v.path.length - 1;       // 도착점 포함 → 새로 그리는 마지막 점이 새 도착
+  const head = v.path.slice(0, dropLo ? 0 : lo + 1);
+  const tail = dropHi ? [] : v.path.slice(hi);
+  v.section = { phase: "redraw", head, tail, mid: [], backup: v.section.backup };
+  v.path = head.concat(tail);
+  redrawVariant(i);
+  updateInfo(i);
+  updateEditUI(i);
+}
+// 완료: 현재 path 확정
+function finishSection(i) {
+  const v = variants[i];
+  if (!v || !v.section) return;
+  v.section = null;
+  redrawVariant(i);
+  updateInfo(i);
+  updateEditUI(i);
+}
+// 취소: 백업 복원
+function cancelSection(i) {
+  const v = variants[i];
+  if (!v || !v.section) return;
+  v.path = v.section.backup.map((p) => p.slice());
+  v.section = null;
+  redrawVariant(i);
+  updateInfo(i);
+  updateEditUI(i);
+}
+// 구간 수정 UI(버튼/안내) 상태 갱신
+function updateEditUI(i) {
+  const v = variants[i];
+  if (!v || !v.editEl) return;
+  const ph = v.section && v.section.phase;
+  const startBtn = v.editEl.querySelector(".vrow__edit-start");
+  const active = v.editEl.querySelector(".vrow__edit-active");
+  const status = v.editEl.querySelector(".vrow__edit-status");
+  startBtn.hidden = !!ph;
+  active.hidden = !ph;
+  if (ph === "pick") status.textContent = v.section.a === null
+    ? "구간 시작점을 클릭하세요"
+    : "구간 끝점을 클릭하세요 (출발점은 첫 점, 도착점은 끝 점)";
+  else if (ph === "redraw") status.textContent = "지도를 클릭해 이 구간을 다시 그린 뒤 ‘완료’";
 }
 function fitAll() {
   if (!naverReady || !editorMap) return;
@@ -283,6 +366,14 @@ function addVariantRow(data) {
     "    </select>" +
     '    <input class="field__input vrow__wp-label" placeholder="라벨(선택, 예: 5km)">' +
     "  </span>" +
+    '  <span class="vrow__edit">' +
+    '    <button type="button" class="btn btn--ghost btn--sm vrow__edit-start" title="출발점/특정 구간을 지우고 다시 그리기">구간 수정</button>' +
+    '    <span class="vrow__edit-active" hidden>' +
+    '      <span class="vrow__edit-status"></span>' +
+    '      <button type="button" class="btn btn--ghost btn--sm vrow__edit-done">완료</button>' +
+    '      <button type="button" class="btn btn--ghost btn--sm vrow__edit-cancel">취소</button>' +
+    "    </span>" +
+    "  </span>" +
     "</div>" +
     '<ul class="vrow__wp-list"></ul>' +
     '<p class="vrow__info gpx-info"></p>';
@@ -298,6 +389,8 @@ function addVariantRow(data) {
     wpTypeEl: el.querySelector(".vrow__wp-type"),
     wpLabelEl: el.querySelector(".vrow__wp-label"),
     wpListEl: el.querySelector(".vrow__wp-list"),
+    editEl: el.querySelector(".vrow__edit"),
+    section: null, // 구간 수정 상태(없으면 null)
     path: Array.isArray(data.path) ? data.path.slice() : [],
     waypoints: Array.isArray(data.waypoints)
       ? data.waypoints
@@ -334,11 +427,23 @@ function addVariantRow(data) {
     r.addEventListener("change", () => setMode(variants.indexOf(v), el.querySelector('input[type="radio"]:checked').value))
   );
   el.querySelector(".vrow__undo").addEventListener("click", () => {
-    const idx = variants.indexOf(v); v.path.pop(); redrawVariant(idx); updateInfo(idx);
+    const idx = variants.indexOf(v);
+    if (v.section && v.section.phase === "redraw") {
+      v.section.mid.pop(); // 구간 다시 그리는 중엔 새로 찍은 점만 되돌림
+      v.path = v.section.head.concat(v.section.mid, v.section.tail);
+    } else if (!v.section) {
+      v.path.pop();
+    }
+    redrawVariant(idx); updateInfo(idx);
   });
   el.querySelector(".vrow__clear").addEventListener("click", () => {
-    const idx = variants.indexOf(v); v.path = []; redrawVariant(idx); updateInfo(idx);
+    const idx = variants.indexOf(v);
+    if (v.section) cancelSection(idx);
+    v.path = []; redrawVariant(idx); updateInfo(idx);
   });
+  el.querySelector(".vrow__edit-start").addEventListener("click", () => startSectionEdit(variants.indexOf(v)));
+  el.querySelector(".vrow__edit-done").addEventListener("click", () => finishSection(variants.indexOf(v)));
+  el.querySelector(".vrow__edit-cancel").addEventListener("click", () => cancelSection(variants.indexOf(v)));
 
   const idx = variants.indexOf(v);
   updateInfo(idx);
@@ -417,6 +522,7 @@ function setMode(i, mode) {
     v.drawWrap.hidden = false;
     arm(i);
   } else {
+    if (v.section) cancelSection(i); // GPX 모드로 가면 구간 수정 종료
     v.gpxEl.hidden = false;
     v.drawWrap.hidden = true;
     if (drawIdx === i) { drawIdx = -1; redrawVariant(i); }
@@ -426,6 +532,7 @@ function setMode(i, mode) {
 function arm(i) {
   const prev = drawIdx;
   drawIdx = i;
+  if (prev >= 0 && prev !== i && variants[prev] && variants[prev].section) cancelSection(prev); // 다른 행 가면 구간 수정 종료
   variants.forEach((v, idx) => v.el.classList.toggle("is-armed", idx === i));
   if (prev >= 0 && prev !== i && variants[prev]) redrawVariant(prev);
   redrawVariant(i);

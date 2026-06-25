@@ -34,8 +34,7 @@ let coursesCache = [];      // 목록 원본
 let naverReady = false;
 let editorMap = null;
 let variants = [];          // 거리별 행 [{el, distEl, colorEl, gpxEl, drawWrap, infoEl, path, line, dots}]
-let drawIdx = -1;           // 지도 그리기로 무장된 행 인덱스 (-1=없음)
-let wpIdx = -1;             // 지점 찍기로 무장된 행 인덱스 (-1=없음). drawIdx와 배타
+let drawIdx = -1;           // 지도 그리기로 무장된 행 인덱스 (-1=없음). 그리는 중 지점도 같이 찍음
 let vseq = 0;               // 라디오 name 고유값
 
 // 코스 위 지점(waypoint) 타입 — app.js/server.js와 키 일치
@@ -121,21 +120,21 @@ function ensureMap() {
   });
   naver.maps.Event.addListener(editorMap, "click", (e) => {
     const lat = e.coord.lat(), lng = e.coord.lng();
-    // 지점 찍기 모드가 우선
-    if (wpIdx >= 0 && variants[wpIdx]) {
-      const v = variants[wpIdx];
-      const type = v.wpTypeEl.value;
-      const label = v.wpLabelEl.value.trim() || (WP_TYPES[type] || WP_TYPES.etc).ko;
+    if (drawIdx < 0 || !variants[drawIdx]) return;
+    const v = variants[drawIdx];
+    // 클릭 = 경로점 추가. 종류가 '경로점'이 아니면 같은 자리에 라벨 핀도 같이 찍고 자동 복귀.
+    v.path.push([lat, lng]);
+    const type = v.wpTypeEl ? v.wpTypeEl.value : "path";
+    if (type && type !== "path" && WP_TYPES[type]) {
+      const label = v.wpLabelEl.value.trim() || WP_TYPES[type].ko;
       v.waypoints.push({ type, label, lat, lng });
-      redrawWaypoints(wpIdx);
-      renderWpList(wpIdx);
-      return;
+      v.wpTypeEl.value = "path"; // 다음 클릭은 다시 일반 경로점
+      v.wpLabelEl.value = "";
+      redrawWaypoints(drawIdx);
+      renderWpList(drawIdx);
     }
-    if (drawIdx >= 0 && variants[drawIdx]) {
-      variants[drawIdx].path.push([lat, lng]);
-      redrawVariant(drawIdx);
-      updateInfo(drawIdx);
-    }
+    redrawVariant(drawIdx);
+    updateInfo(drawIdx);
   });
   setTimeout(() => naver.maps.Event.trigger(editorMap, "resize"), 60);
   variants.forEach((_, i) => { redrawVariant(i); redrawWaypoints(i); });
@@ -175,17 +174,6 @@ function renderWpList(i) {
       renderWpList(idx);
     });
     v.wpListEl.appendChild(li);
-  });
-}
-// 지점 찍기 모드 토글 (drawIdx와 배타)
-function armWaypoints(i) {
-  wpIdx = wpIdx === i ? -1 : i;
-  if (wpIdx >= 0 && drawIdx >= 0) { const d = drawIdx; drawIdx = -1; redrawVariant(d); }
-  variants.forEach((v, idx) => {
-    v.el.classList.toggle("is-wp-armed", idx === wpIdx);
-    v.el.classList.toggle("is-armed", idx === drawIdx);
-    const btn = v.el.querySelector(".vrow__wp-arm");
-    if (btn) btn.textContent = idx === wpIdx ? "찍는 중 — 지도 클릭으로 추가 (완료하려면 다시 클릭)" : "지도에 지점 찍기";
   });
 }
 function redrawVariant(i) {
@@ -281,23 +269,22 @@ function addVariantRow(data) {
     '<div class="vrow__draw" hidden>' +
     '  <button type="button" class="btn btn--ghost btn--sm vrow__undo">되돌리기</button>' +
     '  <button type="button" class="btn btn--ghost btn--sm vrow__clear">지우기</button>' +
-    '  <span class="vrow__armed">지도 클릭으로 점 찍는 중</span>' +
-    "</div>" +
-    '<div class="vrow__wp">' +
-    '  <div class="vrow__wp-add">' +
+    '  <span class="vrow__armed">지도 클릭으로 그리는 중</span>' +
+    '  <span class="vrow__wp-pick">' +
+    '    <span class="vrow__wp-pick-lbl">다음 클릭:</span>' +
     '    <select class="vrow__wp-type">' +
+    '      <option value="path" selected>경로점</option>' +
+    '      <option value="turn">반환점</option>' +
+    '      <option value="water">급수대</option>' +
     '      <option value="start">출발</option>' +
     '      <option value="finish">도착</option>' +
-    '      <option value="turn" selected>반환점</option>' +
-    '      <option value="water">급수대</option>' +
     '      <option value="km">km표식</option>' +
     '      <option value="etc">기타</option>' +
     "    </select>" +
     '    <input class="field__input vrow__wp-label" placeholder="라벨(선택, 예: 5km)">' +
-    '    <button type="button" class="btn btn--ghost btn--sm vrow__wp-arm">지도에 지점 찍기</button>' +
-    "  </div>" +
-    '  <ul class="vrow__wp-list"></ul>' +
+    "  </span>" +
     "</div>" +
+    '<ul class="vrow__wp-list"></ul>' +
     '<p class="vrow__info gpx-info"></p>';
   document.getElementById("variant-rows").appendChild(el);
 
@@ -339,7 +326,6 @@ function addVariantRow(data) {
     addVariantRow({ distance: v.distEl.value, color: v.colorEl.value, path: v.path.slice(), waypoints: v.waypoints.map((w) => ({ ...w })) });
     fitAll();
   });
-  el.querySelector(".vrow__wp-arm").addEventListener("click", () => armWaypoints(variants.indexOf(v)));
   el.querySelector(".vrow__up").addEventListener("click", () => moveVariant(variants.indexOf(v), -1));
   el.querySelector(".vrow__down").addEventListener("click", () => moveVariant(variants.indexOf(v), 1));
   el.querySelector(".vrow__gpxdl").addEventListener("click", () => downloadVariantGpx(variants.indexOf(v)));
@@ -369,15 +355,10 @@ function moveVariant(i, dir) {
   const tmp = variants[i]; variants[i] = variants[j]; variants[j] = tmp;
   const container = document.getElementById("variant-rows");
   variants.forEach((v) => container.appendChild(v.el)); // 배열 순서대로 DOM 재배치
-  // 그리기/지점 무장된 행 인덱스를 따라가게
+  // 그리기로 무장된 행 인덱스를 따라가게
   if (drawIdx === i) drawIdx = j;
   else if (drawIdx === j) drawIdx = i;
-  if (wpIdx === i) wpIdx = j;
-  else if (wpIdx === j) wpIdx = i;
-  variants.forEach((v, idx) => {
-    v.el.classList.toggle("is-armed", idx === drawIdx);
-    v.el.classList.toggle("is-wp-armed", idx === wpIdx);
-  });
+  variants.forEach((v, idx) => v.el.classList.toggle("is-armed", idx === drawIdx));
   refreshOrderButtons();
 }
 // 첫 행은 위로, 마지막 행은 아래로 비활성
@@ -445,15 +426,6 @@ function setMode(i, mode) {
 function arm(i) {
   const prev = drawIdx;
   drawIdx = i;
-  // 경로 그리기와 지점 찍기는 배타 — 지점 모드 해제
-  if (wpIdx >= 0) {
-    wpIdx = -1;
-    variants.forEach((v) => {
-      v.el.classList.remove("is-wp-armed");
-      const btn = v.el.querySelector(".vrow__wp-arm");
-      if (btn) btn.textContent = "지도에 지점 찍기";
-    });
-  }
   variants.forEach((v, idx) => v.el.classList.toggle("is-armed", idx === i));
   if (prev >= 0 && prev !== i && variants[prev]) redrawVariant(prev);
   redrawVariant(i);
@@ -468,12 +440,7 @@ function removeVariant(i) {
   variants.splice(i, 1);
   if (drawIdx === i) drawIdx = -1;
   else if (drawIdx > i) drawIdx--;
-  if (wpIdx === i) wpIdx = -1;
-  else if (wpIdx > i) wpIdx--;
-  variants.forEach((vv, idx) => {
-    vv.el.classList.toggle("is-armed", idx === drawIdx);
-    vv.el.classList.toggle("is-wp-armed", idx === wpIdx);
-  });
+  variants.forEach((vv, idx) => vv.el.classList.toggle("is-armed", idx === drawIdx));
   refreshOrderButtons();
 }
 function handleGpx(i, file) {

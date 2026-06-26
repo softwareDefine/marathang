@@ -169,10 +169,12 @@ html, body {
   overflow: hidden;
 }
 .maptype__btn {
-  width: 46px;
+  min-width: 46px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 600;
   display: grid;
   place-items: center;
-  padding: 0;
   border: 0;
   background: transparent;
   color: var(--muted);
@@ -278,6 +280,8 @@ html, body {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+/* 글자형 도구 버튼(거리재기·거리뷰) — 현위치만 아이콘 유지 */
+.tool__btn--text { width: auto; padding: 0 14px; font-size: 14px; font-weight: 600; color: var(--text); }
 .tool__btn:hover { border-color: var(--accent); color: var(--accent); }
 .tool__btn.is-active { border-color: var(--accent); color: var(--accent); background: var(--panel-2); }
 .tool__btn.is-loading { opacity: 0.5; pointer-events: none; }
@@ -784,6 +788,7 @@ html:not([data-theme="light"]) .map img[src*="/styles/basic/"] {
   /* 도구(거리재기·거리뷰·현위치)를 하단 시트 위로 */
   .tools { top: auto; bottom: calc(46vh + 12px); right: 12px; }
   .tool__btn { width: 40px; height: 40px; }
+  .tool__btn--text { width: auto; padding: 0 12px; font-size: 13px; }
 
   /* 코스목록: 하단 시트 (제목 탭으로 접기) */
   .sidebar {

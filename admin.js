@@ -442,7 +442,11 @@ function addVariantRow(data) {
   el.querySelector(".vrow__down").addEventListener("click", () => moveVariant(variants.indexOf(v), 1));
   el.querySelector(".vrow__gpxdl").addEventListener("click", () => downloadVariantGpx(variants.indexOf(v)));
   el.querySelector(".vrow__snap").addEventListener("click", () => snapToRoad(variants.indexOf(v)));
-  el.querySelector(".vrow__del").addEventListener("click", () => removeVariant(variants.indexOf(v)));
+  el.querySelector(".vrow__del").addEventListener("click", () => {
+    const i = variants.indexOf(v);
+    if ((v.path.length || v.waypoints.length) && !confirm("이 거리 코스를 삭제할까요?\n그린 경로와 찍은 지점이 모두 사라집니다.")) return;
+    removeVariant(i);
+  });
   el.querySelectorAll('input[type="radio"]').forEach((r) =>
     r.addEventListener("change", () => setMode(variants.indexOf(v), el.querySelector('input[type="radio"]:checked').value))
   );
@@ -459,6 +463,7 @@ function addVariantRow(data) {
   });
   el.querySelector(".vrow__clear").addEventListener("click", () => {
     const idx = variants.indexOf(v);
+    if ((v.path.length || v.waypoints.length) && !confirm("그린 경로를 모두 지울까요?\n경로와 찍은 지점이 사라집니다.")) return;
     if (v.section) cancelSection(idx);
     v.path = [];
     v.waypoints = []; // 경로 지우면 거기 찍힌 핀도 전부 제거

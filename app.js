@@ -788,6 +788,12 @@ function buildSidebar(setVisible, overlays, map, naver) {
 
   // 검색 필터용 항목 모음 { event, li, variants:[{ v, state }] }
   const items = [];
+  const toggleAllBtn = document.getElementById("toggle-all");
+  function refreshToggleAll() {
+    if (!toggleAllBtn) return;
+    const anyOn = items.some((it) => it.variants.some((x) => x.state.on));
+    toggleAllBtn.textContent = anyOn ? "전체 끄기" : "전체 켜기";
+  }
 
   EVENTS.forEach((event) => {
     const li = document.createElement("li");
@@ -821,10 +827,10 @@ function buildSidebar(setVisible, overlays, map, naver) {
         chip.setAttribute("aria-pressed", String(state.on));
         setVisible(v.vid, state.on);
       }
-      chip.addEventListener("click", () => { state.on = !state.on; sync(); });
+      chip.addEventListener("click", () => { state.on = !state.on; sync(); refreshToggleAll(); });
 
       vlist.appendChild(chip);
-      variants.push({ v, state });
+      variants.push({ v, state, sync });
     });
 
     // 카드 헤드 클릭 → 첫 코스로 지도 이동 + 인포윈도우
@@ -839,6 +845,17 @@ function buildSidebar(setVisible, overlays, map, naver) {
     ul.appendChild(li);
     items.push({ event, li, variants });
   });
+
+  // 전체 켜기/끄기 토글 (하나라도 켜져 있으면 전체 끄기, 다 꺼져 있으면 전체 켜기)
+  if (toggleAllBtn) {
+    toggleAllBtn.onclick = () => {
+      const anyOn = items.some((it) => it.variants.some((x) => x.state.on));
+      const target = !anyOn;
+      items.forEach((it) => it.variants.forEach((x) => { x.state.on = target; x.sync(); }));
+      refreshToggleAll();
+    };
+    refreshToggleAll();
+  }
 
   // 정렬: 선택 기준대로 li를 재배치 ("등록순"=원래 순서)
   const sortSel = document.getElementById("sort-select");

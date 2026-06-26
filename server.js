@@ -11,6 +11,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const { handleAuth } = require("./auth.js");
 
 const ROOT = __dirname;
 const DATA_FILE = path.join(ROOT, "courses.json");
@@ -18,6 +19,7 @@ const LOCKS_FILE = path.join(ROOT, "locks.json");
 const FEEDBACK_FILE = path.join(ROOT, "feedback.json"); // 사용자 의견(제안/신고) — courses.json과 분리
 const FEEDBACK_MAX = 1000; // 보관 상한 (오래된 건 잘림)
 const VIEWS_FILE = path.join(ROOT, "views.json"); // 대회별 조회수 { eventId: count } — courses.json과 분리
+const USERS_FILE = path.join(ROOT, "users.json"); // 소셜 로그인 유저 { uid: {...} } — courses.json과 분리
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "marathangisspicy";
 // 편집 락 TTL. 하트비트(클라가 주기적으로 갱신)가 끊기면 이만큼 뒤 자동 만료 →
 // 탭을 그냥 닫아도 락이 영구히 박히지 않음.
@@ -67,6 +69,14 @@ const fileStore = {
   },
   async writeViews(map) {
     fs.writeFileSync(VIEWS_FILE, JSON.stringify(map, null, 2) + "\n", "utf-8");
+  },
+  // 소셜 로그인 유저도 별도 파일
+  async readUsers() {
+    try { return JSON.parse(fs.readFileSync(USERS_FILE, "utf-8")); }
+    catch { return {}; }
+  },
+  async writeUsers(map) {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(map, null, 2) + "\n", "utf-8");
   },
 };
 let store = fileStore;
@@ -332,6 +342,9 @@ function serveStatic(pathname) {
   let rel = decodeURIComponent(pathname);
   if (rel === "/") rel = "/index.html";
   if (rel === "/admin" || rel === "/admin/") rel = "/admin.html";
+  // 런타임 데이터 파일은 정적으로 절대 노출하지 않음(유저 PII 등)
+  if (/^\/(users|locks|feedback|views)\.json$/i.test(rel))
+    return { statusCode: 404, headers: { "Content-Type": "text/plain; charset=utf-8" }, body: "404 Not Found" };
   const filePath = path.normalize(path.join(ROOT, rel));
   if (!filePath.startsWith(ROOT)) {
     return { statusCode: 403, headers: { "Content-Type": "text/plain" }, body: "forbidden" };
@@ -346,9 +359,11 @@ function serveStatic(pathname) {
 }
 
 // ── 코어: 요청 1건 → 응답 객체 ─────────────────────────────────
-async function handleRequest({ method, pathname, headers, body }) {
+async function handleRequest({ method, pathname, headers, body, query }) {
   const h = {};
   for (const k in (headers || {})) h[k.toLowerCase()] = headers[k];
+  if (pathname === "/auth" || pathname.startsWith("/auth/"))
+    return handleAuth({ method, pathname, query: query || {}, headers: h }, store);
   if (pathname.startsWith("/api/")) return handleApi({ method, pathname, headers: h, body });
   return serveStatic(pathname);
 }
@@ -370,7 +385,10 @@ if (require.main === module) {
           req.on("error", reject);
         });
       }
-      const r = await handleRequest({ method: req.method, pathname: url.pathname, headers: req.headers, body });
+      const r = await handleRequest({
+        method: req.method, pathname: url.pathname, headers: req.headers, body,
+        query: Object.fromEntries(url.searchParams),
+      });
       res.writeHead(r.statusCode, r.headers);
       res.end(r.body);
     } catch (e) {

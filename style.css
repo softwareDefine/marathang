@@ -120,6 +120,46 @@ html, body {
   align-items: center;
   gap: 12px;
 }
+.topbar__right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+/* ── 로그인(카카오·네이버) 위젯 ── */
+.auth { position: relative; }
+.auth__login {
+  height: 40px; padding: 0 16px; border-radius: 999px;
+  background: var(--float-bg); border: 1px solid var(--line); color: var(--text);
+  font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.auth__login:hover { border-color: var(--accent); }
+.auth__login[hidden] { display: none; }
+.auth__menu {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 50;
+  display: flex; flex-direction: column; gap: 6px; padding: 8px; min-width: 168px;
+  background: var(--float-bg); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: var(--float-shadow); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.auth__menu[hidden] { display: none; }
+.auth__opt {
+  display: block; padding: 11px 12px; border-radius: 8px; text-decoration: none;
+  font-size: 14px; font-weight: 700; text-align: center; color: #191919;
+}
+.auth__opt--kakao { background: #fee500; }
+.auth__opt--naver { background: #03c75a; color: #fff; }
+.auth__opt:hover { filter: brightness(0.96); }
+.auth__user { display: flex; align-items: center; gap: 8px; }
+.auth__user[hidden] { display: none; }
+.auth__avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); }
+.auth__avatar[hidden] { display: none; }
+.auth__name {
+  font-size: 14px; font-weight: 700; color: var(--text);
+  max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.auth__logout {
+  height: 32px; padding: 0 12px; border-radius: 999px;
+  background: transparent; border: 1px solid var(--line); color: var(--muted);
+  font: inherit; font-size: 12px; cursor: pointer;
+}
+.auth__logout:hover { border-color: var(--accent); color: var(--accent); }
 
 /* 테마 토글 (로고 오른쪽, 아이콘 버튼) */
 .theme-toggle {

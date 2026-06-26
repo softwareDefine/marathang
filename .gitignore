@@ -10,6 +10,7 @@ package-lock.json
 locks.json
 feedback.json
 views.json
+users.json
 
 # OS
 Thumbs.db

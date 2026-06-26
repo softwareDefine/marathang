@@ -1260,6 +1260,35 @@ function setupFeedback() {
 }
 setupFeedback();
 
+// ── 로그인(카카오·네이버) 위젯 ──────────────────────────────────
+function setupAuth() {
+  const root = document.getElementById("auth");
+  if (!root) return;
+  const loginBtn = document.getElementById("auth-login");
+  const menu = document.getElementById("auth-menu");
+  const userBox = document.getElementById("auth-user");
+  loginBtn.addEventListener("click", (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; });
+  document.addEventListener("click", (e) => { if (!e.target.closest("#auth")) menu.hidden = true; });
+  document.getElementById("auth-logout").addEventListener("click", () => {
+    fetch("/auth/logout", { method: "POST" }).then(() => location.reload());
+  });
+  // 로그인 실패 메시지(콜백이 ?login_error=...로 돌려보냄)
+  const err = new URLSearchParams(location.search).get("login_error");
+  if (err) { alert("로그인 실패: " + err); history.replaceState(null, "", location.pathname); }
+  // 현재 세션
+  fetch("/auth/me")
+    .then((r) => r.json())
+    .then(({ user }) => {
+      if (!user) return;
+      loginBtn.hidden = true; menu.hidden = true; userBox.hidden = false;
+      document.getElementById("auth-name").textContent = user.name || "사용자";
+      const av = document.getElementById("auth-avatar");
+      if (user.picture) { av.src = user.picture; av.hidden = false; } else { av.hidden = true; }
+    })
+    .catch(() => {});
+}
+setupAuth();
+
 // 부트스트랩
 loadCourses()
   .then(loadViews)

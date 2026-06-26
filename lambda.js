@@ -16,6 +16,7 @@ const KEY = process.env.COURSES_KEY || "courses.json";
 const LOCKS_KEY = process.env.LOCKS_KEY || "locks.json"; // 편집 락 (courses.json과 분리)
 const FEEDBACK_KEY = process.env.FEEDBACK_KEY || "feedback.json"; // 사용자 의견 (별도 키)
 const VIEWS_KEY = process.env.VIEWS_KEY || "views.json"; // 대회별 조회수 (별도 키)
+const USERS_KEY = process.env.USERS_KEY || "users.json"; // 소셜 로그인 유저 (별도 키)
 const s3 = new S3Client({});
 
 async function streamToString(stream) {
@@ -107,6 +108,25 @@ const s3Store = {
       ContentType: "application/json; charset=utf-8",
     }));
   },
+  // 소셜 로그인 유저. 객체 없음(403/404)을 빈 맵으로 처리.
+  async readUsers() {
+    try {
+      const out = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: USERS_KEY }));
+      return JSON.parse(await streamToString(out.Body));
+    } catch (e) {
+      const code = e.$metadata && e.$metadata.httpStatusCode;
+      if (e.name === "NoSuchKey" || e.name === "NotFound" || e.name === "AccessDenied" || code === 404 || code === 403) return {};
+      throw e;
+    }
+  },
+  async writeUsers(map) {
+    await s3.send(new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: USERS_KEY,
+      Body: JSON.stringify(map, null, 2) + "\n",
+      ContentType: "application/json; charset=utf-8",
+    }));
+  },
 };
 setStore(s3Store);
 
@@ -117,11 +137,20 @@ exports.handler = async (event) => {
   let body = event.body || "";
   if (event.isBase64Encoded && body) body = Buffer.from(body, "base64").toString("utf-8");
 
-  const r = await handleRequest({ method, pathname, headers, body });
-  return {
+  const query = event.queryStringParameters || {};
+  const r = await handleRequest({ method, pathname, headers, body, query });
+  const resp = {
     statusCode: r.statusCode,
-    headers: r.headers,
-    body: r.body,
+    headers: { ...(r.headers || {}) },
+    body: r.body || "",
     isBase64Encoded: false,
   };
+  // Function URL(payload v2)은 Set-Cookie를 cookies 배열로 받음
+  const sc = resp.headers["Set-Cookie"] || resp.headers["set-cookie"];
+  if (sc) {
+    resp.cookies = Array.isArray(sc) ? sc : [sc];
+    delete resp.headers["Set-Cookie"];
+    delete resp.headers["set-cookie"];
+  }
+  return resp;
 };

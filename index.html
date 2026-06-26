@@ -39,7 +39,21 @@
         <div class="brand">
           <span class="brand__name">mara<span class="brand__accent">thang</span></span>
         </div>
-        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="테마 전환"></button>
+        <div class="topbar__right">
+          <div id="auth" class="auth">
+            <button id="auth-login" class="auth__login" type="button">로그인</button>
+            <div id="auth-menu" class="auth__menu" hidden>
+              <a class="auth__opt auth__opt--kakao" href="/auth/kakao/login">카카오로 시작</a>
+              <a class="auth__opt auth__opt--naver" href="/auth/naver/login">네이버로 시작</a>
+            </div>
+            <div id="auth-user" class="auth__user" hidden>
+              <img id="auth-avatar" class="auth__avatar" alt="" hidden />
+              <span id="auth-name" class="auth__name"></span>
+              <button id="auth-logout" class="auth__logout" type="button">로그아웃</button>
+            </div>
+          </div>
+          <button id="theme-toggle" class="theme-toggle" type="button" aria-label="테마 전환"></button>
+        </div>
       </div>
       <div class="search">
         <svg class="search__icon" viewBox="0 0 24 24" aria-hidden="true">

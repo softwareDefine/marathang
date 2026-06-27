@@ -458,10 +458,10 @@ html, body {
 .sidebar {
   position: absolute;
   z-index: 10;
-  top: 140px;
+  top: 80px;
   left: 16px;
   width: 320px;
-  max-height: calc(100vh - 156px);
+  max-height: calc(100vh - 96px);
   overflow-y: auto;
   background: var(--float-bg);
   backdrop-filter: blur(8px);

@@ -127,9 +127,10 @@ html, body {
 .auth__menu { right: 0; }
 .auth__user { justify-content: flex-end; }
 .auth__login {
-  flex: none; width: 40px; height: 40px; padding: 0; border-radius: 50%;
+  flex: none; width: 44px; height: 44px; padding: 0; border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
   background: var(--float-bg); border: 1px solid var(--line); color: var(--text); cursor: pointer;
+  box-shadow: var(--float-shadow);
   -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
 }
 .auth__login svg {
@@ -516,10 +517,10 @@ html, body {
   font-size: 13px;
 }
 
-.sidebar__title { margin: 0 0 4px; font-size: 18px; }
-.sidebar__bar { display: flex; justify-content: flex-end; margin: 0 0 8px; }
+.sidebar__title { margin: 0; font-size: 18px; }
+.sidebar__bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 12px; }
 .toggle-all {
-  height: 30px; padding: 0 12px; border-radius: 999px;
+  flex: none; height: 30px; padding: 0 12px; border-radius: 999px;
   background: var(--float-bg); border: 1px solid var(--line); color: var(--text);
   font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
 }

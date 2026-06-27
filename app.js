@@ -490,11 +490,12 @@ function setupMapControls(map, naver) {
     satellite: naver.maps.MapTypeId.HYBRID, // 위성 + 지명 라벨
   };
   if (typeBtn) {
+    const typeLabel = typeBtn.querySelector(".maptype-toggle__label");
     typeBtn.addEventListener("click", () => {
       const next = typeBtn.dataset.type === "normal" ? "satellite" : "normal";
       typeBtn.dataset.type = next;
       map.setMapTypeId(types[next]);
-      typeBtn.textContent = next === "normal" ? "위성" : "지도"; // 다음에 바뀔 유형 표시
+      if (typeLabel) typeLabel.textContent = next === "normal" ? "위성" : "지도"; // 다음에 바뀔 유형 표시
       typeBtn.classList.toggle("is-satellite", next === "satellite");
     });
   }

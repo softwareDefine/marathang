@@ -222,8 +222,10 @@ html, body {
   right: 16px;
   width: 44px;
   height: 44px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
   padding: 0;
   font-size: 13px;
   font-weight: 700;
@@ -237,7 +239,9 @@ html, body {
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
+.maptype-toggle__arrow { font-size: 11px; color: var(--muted); line-height: 1; margin-top: -1px; }
 .maptype-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.maptype-toggle:hover .maptype-toggle__arrow { color: var(--accent); }
 
 /* 줌 컨트롤 (+/−) */
 .zoom {

@@ -220,13 +220,13 @@ html, body {
   z-index: 11;
   top: 72px;
   right: 16px;
-  width: 44px;
+  min-width: 44px;
   height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1px;
-  padding: 0;
+  gap: 5px;
+  padding: 0 11px;
   font-size: 13px;
   font-weight: 700;
   background: var(--float-bg);
@@ -239,7 +239,7 @@ html, body {
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
-.maptype-toggle__arrow { font-size: 11px; color: var(--muted); line-height: 1; margin-top: -1px; }
+.maptype-toggle__arrow { font-size: 13px; color: var(--muted); line-height: 1; padding-right: 5px; border-right: 1px solid var(--line); }
 .maptype-toggle:hover { border-color: var(--accent); color: var(--accent); }
 .maptype-toggle:hover .maptype-toggle__arrow { color: var(--accent); }
 

@@ -1412,7 +1412,7 @@ function setupTour() {
     nextBtn.textContent = i === TOUR_STEPS.length - 1 ? "시작하기" : "다음";
     place();
   }
-  function open() { tour.hidden = false; i = 0; render(); }
+  function open(start) { tour.hidden = false; i = Math.min(Math.max(0, start | 0), TOUR_STEPS.length - 1); render(); }
   function close() {
     tour.hidden = true;
     if (dontShow.checked) { try { localStorage.setItem(TOUR_KEY, "1"); } catch (_) {} }
@@ -1424,10 +1424,13 @@ function setupTour() {
   document.addEventListener("keydown", (e) => { if (!tour.hidden && e.key === "Escape") close(); });
   window.addEventListener("resize", () => { if (!tour.hidden) place(); });
 
+  window.openTour = open; // 도움말 버튼 등에서 재호출 가능
+  // ?tour=N 으로 특정 단계부터 강제 표시(테스트/딥링크)
+  const forced = new URLSearchParams(location.search).get("tour");
+  if (forced !== null) { open(Number(forced)); return; }
   let seen = false;
   try { seen = localStorage.getItem(TOUR_KEY) === "1"; } catch (_) {}
   if (!seen) open();
-  window.openTour = open; // 도움말 버튼 등에서 재호출 가능
 }
 setupTour();
 

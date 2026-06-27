@@ -122,8 +122,8 @@ html, body {
 }
 .topbar__right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
-/* ── 로그인(카카오·네이버) 위젯 — 지도/위성·테마 아래 우측 ── */
-.auth { position: absolute; z-index: 11; top: 128px; right: 16px; }
+/* ── 로그인(카카오·네이버) 위젯 — 우측 컨트롤 열 맨 위 ── */
+.auth { position: absolute; z-index: 11; top: 16px; right: 16px; }
 .auth__menu { right: 0; }
 .auth__login {
   flex: none; width: 44px; height: 44px; padding: 0; border-radius: 12px;
@@ -178,11 +178,11 @@ html, body {
 .login-modal__title { margin: 0; font-size: 20px; }
 .login-modal__sub { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
 
-/* 테마 토글 — 지도/위성 바로 아래 (우측 컨트롤 열) */
+/* 테마 토글 — 우측 컨트롤 열 (지도/위성 아래) */
 .theme-toggle {
   position: absolute;
   z-index: 11;
-  top: 72px;
+  top: 128px;
   right: 16px;
   flex: none;
   width: 44px;
@@ -214,45 +214,30 @@ html, body {
 .theme-toggle .ic-sun { stroke: #fbbf24; }
 .theme-toggle .ic-moon { stroke: #fcd34d; fill: #fcd34d; }
 
-/* 지도 유형 토글 (일반 / 위성) */
-.maptype {
+/* 지도 유형 토글 (누를 때마다 일반 ↔ 위성) — 우측 컨트롤 열, 로그인 아래 */
+.maptype-toggle {
   position: absolute;
   z-index: 11;
-  top: 16px;
+  top: 72px;
   right: 16px;
-  display: flex;
+  width: 44px;
   height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
   background: var(--float-bg);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: var(--float-shadow);
-  overflow: hidden;
-}
-.maptype__btn {
-  min-width: 46px;
-  padding: 0 16px;
-  font-size: 14px;
-  font-weight: 600;
-  display: grid;
-  place-items: center;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
+  color: var(--text);
   cursor: pointer;
-  transition: color 0.15s, background 0.15s;
+  transition: border-color 0.15s, color 0.15s;
 }
-.maptype__btn svg {
-  width: 20px;
-  height: 20px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.maptype__btn:hover { color: var(--text); }
-.maptype__btn.is-active { color: var(--text); background: var(--panel-2); }
+.maptype-toggle:hover { border-color: var(--accent); color: var(--accent); }
 
 /* 줌 컨트롤 (+/−) */
 .zoom {
@@ -853,8 +838,10 @@ html:not([data-theme="light"]) .map img[src*="/styles/basic/"] {
   /* 검색: 폭 축소(우상단 컨트롤과 안 겹치게) */
   .topbar { top: 12px; left: 12px; gap: 10px; }
   .search { width: min(320px, calc(100vw - 92px)); height: 48px; }
-  .theme-toggle { width: 44px; height: 44px; }
-  .maptype { top: 12px; right: 12px; height: 40px; }
+  /* 우측 컨트롤 열을 화면 안쪽으로 (검색창과 안 겹치게) */
+  .auth { top: 12px; right: 12px; }
+  .maptype-toggle { top: 64px; right: 12px; }
+  .theme-toggle { top: 116px; right: 12px; width: 44px; height: 44px; }
 
   /* 줌 버튼 숨김 (손가락 핀치 줌으로 대체) */
   .zoom { display: none; }

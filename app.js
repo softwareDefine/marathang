@@ -483,19 +483,21 @@ function setupLocate(map, naver) {
 
 // 지도 컨트롤(지도유형·줌)을 커스텀 UI로 통일
 function setupMapControls(map, naver) {
-  // 지도 유형 (일반 / 위성)
-  const typeBtns = document.querySelectorAll(".maptype__btn");
+  // 지도 유형 토글 (누를 때마다 일반 ↔ 위성). 버튼 글자 = 누르면 바뀔 유형
+  const typeBtn = document.getElementById("maptype-toggle");
   const types = {
     normal: naver.maps.MapTypeId.NORMAL,
     satellite: naver.maps.MapTypeId.HYBRID, // 위성 + 지명 라벨
   };
-  typeBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      typeBtns.forEach((b) => b.classList.remove("is-active"));
-      btn.classList.add("is-active");
-      map.setMapTypeId(types[btn.dataset.type]);
+  if (typeBtn) {
+    typeBtn.addEventListener("click", () => {
+      const next = typeBtn.dataset.type === "normal" ? "satellite" : "normal";
+      typeBtn.dataset.type = next;
+      map.setMapTypeId(types[next]);
+      typeBtn.textContent = next === "normal" ? "위성" : "지도"; // 다음에 바뀔 유형 표시
+      typeBtn.classList.toggle("is-satellite", next === "satellite");
     });
-  });
+  }
 
   // 줌 (+/−)
   document.querySelectorAll(".zoom__btn").forEach((btn) => {

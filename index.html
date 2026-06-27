@@ -120,7 +120,17 @@
       </div>
     </div>
 
-    <button id="maptype-toggle" class="maptype-toggle" type="button" data-type="normal" title="지도/위성 전환"><span class="maptype-toggle__arrow">‹</span><span class="maptype-toggle__label">위성</span></button>
+    <div id="maptype" class="maptype">
+      <div id="maptype-panel" class="maptype-panel" hidden>
+        <button type="button" class="maptype-opt is-active" data-type="normal">일반</button>
+        <button type="button" class="maptype-opt" data-type="satellite">위성</button>
+        <button type="button" class="maptype-opt" data-type="hybrid">위성+라벨</button>
+        <button type="button" class="maptype-opt" data-type="terrain">지형</button>
+      </div>
+      <button id="maptype-toggle" class="maptype-toggle" type="button" data-type="normal" title="지도/위성 전환">
+        <span id="maptype-expand" class="maptype-toggle__arrow" role="button" aria-label="지도 유형 더보기" title="더보기">‹</span><span class="maptype-toggle__label">위성</span>
+      </button>
+    </div>
 
     <button id="theme-toggle" class="theme-toggle" type="button" aria-label="테마 전환"></button>
 

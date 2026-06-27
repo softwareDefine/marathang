@@ -483,21 +483,41 @@ function setupLocate(map, naver) {
 
 // 지도 컨트롤(지도유형·줌)을 커스텀 UI로 통일
 function setupMapControls(map, naver) {
-  // 지도 유형 토글 (누를 때마다 일반 ↔ 위성). 버튼 글자 = 누르면 바뀔 유형
+  // 지도 유형: 라벨 클릭=일반↔위성 빠른 전환, '‹' 클릭=패널 펼쳐 더 많은 유형 선택
   const typeBtn = document.getElementById("maptype-toggle");
   const types = {
     normal: naver.maps.MapTypeId.NORMAL,
-    satellite: naver.maps.MapTypeId.HYBRID, // 위성 + 지명 라벨
+    satellite: naver.maps.MapTypeId.SATELLITE, // 위성(라벨 없음)
+    hybrid: naver.maps.MapTypeId.HYBRID,       // 위성 + 지명 라벨
+    terrain: naver.maps.MapTypeId.TERRAIN,     // 지형
   };
+  const TYPE_KO = { normal: "일반", satellite: "위성", hybrid: "위성+라벨", terrain: "지형" };
   if (typeBtn) {
     const typeLabel = typeBtn.querySelector(".maptype-toggle__label");
-    typeBtn.addEventListener("click", () => {
-      const next = typeBtn.dataset.type === "normal" ? "satellite" : "normal";
-      typeBtn.dataset.type = next;
-      map.setMapTypeId(types[next]);
-      if (typeLabel) typeLabel.textContent = next === "normal" ? "위성" : "지도"; // 다음에 바뀔 유형 표시
-      typeBtn.classList.toggle("is-satellite", next === "satellite");
+    const expandBtn = document.getElementById("maptype-expand");
+    const panel = document.getElementById("maptype-panel");
+    const opts = panel ? Array.from(panel.querySelectorAll(".maptype-opt")) : [];
+    let current = "normal";
+
+    function setType(t) {
+      if (!types[t]) return;
+      current = t;
+      map.setMapTypeId(types[t]);
+      opts.forEach((o) => o.classList.toggle("is-active", o.dataset.type === t));
+      // 라벨엔 '누르면 바뀔' 유형 표시: 일반이면 위성, 그 외엔 일반
+      if (typeLabel) typeLabel.textContent = t === "normal" ? "위성" : "일반";
+    }
+    // 라벨(버튼 본체) 클릭 = 일반 ↔ 위성 빠른 전환
+    typeBtn.addEventListener("click", (e) => {
+      if (e.target.closest("#maptype-expand")) return; // 화살표는 별도 처리
+      setType(current === "normal" ? "satellite" : "normal");
     });
+    // '‹' 클릭 = 패널 펼치기/접기
+    if (expandBtn && panel) {
+      expandBtn.addEventListener("click", (e) => { e.stopPropagation(); panel.hidden = !panel.hidden; });
+      opts.forEach((o) => o.addEventListener("click", (e) => { e.stopPropagation(); setType(o.dataset.type); panel.hidden = true; }));
+      document.addEventListener("click", (e) => { if (!e.target.closest("#maptype")) panel.hidden = true; });
+    }
   }
 
   // 줌 (+/−)

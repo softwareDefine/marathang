@@ -214,18 +214,15 @@ html, body {
 .theme-toggle .ic-sun { stroke: #fbbf24; }
 .theme-toggle .ic-moon { stroke: #fcd34d; fill: #fcd34d; }
 
-/* 지도 유형 토글 (누를 때마다 일반 ↔ 위성) — 우측 컨트롤 열, 로그인 아래 */
+/* 지도 유형 — 우측 컨트롤 열, 로그인 아래. 라벨=빠른전환, '‹'=패널 펼침 */
+.maptype { position: absolute; z-index: 11; top: 72px; right: 16px; }
 .maptype-toggle {
-  position: absolute;
-  z-index: 11;
-  top: 72px;
-  right: 16px;
   min-width: 44px;
   height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 6px;
   padding: 0 11px;
   font-size: 13px;
   font-weight: 700;
@@ -239,9 +236,27 @@ html, body {
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
-.maptype-toggle__arrow { font-size: 13px; color: var(--muted); line-height: 1; padding-right: 5px; border-right: 1px solid var(--line); }
-.maptype-toggle:hover { border-color: var(--accent); color: var(--accent); }
-.maptype-toggle:hover .maptype-toggle__arrow { color: var(--accent); }
+.maptype-toggle__arrow {
+  font-size: 18px; color: var(--muted); line-height: 1;
+  padding-right: 6px; border-right: 1px solid var(--line); cursor: pointer;
+}
+.maptype-toggle__arrow:hover { color: var(--accent); }
+.maptype-toggle:hover { border-color: var(--accent); }
+/* 펼침 패널: 토글 왼쪽으로 ('‹' 방향) */
+.maptype-panel {
+  position: absolute; top: 0; right: calc(100% + 8px); z-index: 12;
+  display: flex; gap: 4px; padding: 6px; white-space: nowrap;
+  background: var(--float-bg); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: var(--float-shadow); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.maptype-panel[hidden] { display: none; }
+.maptype-opt {
+  height: 32px; padding: 0 10px; border-radius: 8px;
+  background: transparent; border: 1px solid transparent; color: var(--muted);
+  font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.maptype-opt:hover { color: var(--text); border-color: var(--line); }
+.maptype-opt.is-active { color: var(--text); background: var(--panel-2); }
 
 /* 줌 컨트롤 (+/−) */
 .zoom {
@@ -844,7 +859,7 @@ html:not([data-theme="light"]) .map img[src*="/styles/basic/"] {
   .search { width: min(320px, calc(100vw - 92px)); height: 48px; }
   /* 우측 컨트롤 열을 화면 안쪽으로 (검색창과 안 겹치게) */
   .auth { top: 12px; right: 12px; }
-  .maptype-toggle { top: 64px; right: 12px; }
+  .maptype { top: 64px; right: 12px; }
   .theme-toggle { top: 116px; right: 12px; width: 44px; height: 44px; }
 
   /* 줌 버튼 숨김 (손가락 핀치 줌으로 대체) */

@@ -178,11 +178,11 @@ html, body {
 .login-modal__title { margin: 0; font-size: 20px; }
 .login-modal__sub { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
 
-/* 테마 토글 — 우측 컨트롤 열 (지도/위성 아래) */
+/* 테마 토글 — 우측 컨트롤 열 (로그인 아래) */
 .theme-toggle {
   position: absolute;
   z-index: 11;
-  top: 128px;
+  top: 72px;
   right: 16px;
   flex: none;
   width: 44px;
@@ -215,7 +215,7 @@ html, body {
 .theme-toggle .ic-moon { stroke: #fcd34d; fill: #fcd34d; }
 
 /* 지도 유형 — 우측 컨트롤 열, 로그인 아래. 라벨=빠른전환, '‹'=패널 펼침 */
-.maptype { position: absolute; z-index: 11; top: 72px; right: 16px; }
+.maptype { position: absolute; z-index: 11; top: 128px; right: 16px; }
 .maptype-toggle {
   min-width: 44px;
   height: 44px;
@@ -859,8 +859,8 @@ html:not([data-theme="light"]) .map img[src*="/styles/basic/"] {
   .search { width: min(320px, calc(100vw - 92px)); height: 48px; }
   /* 우측 컨트롤 열을 화면 안쪽으로 (검색창과 안 겹치게) */
   .auth { top: 12px; right: 12px; }
-  .maptype { top: 64px; right: 12px; }
-  .theme-toggle { top: 116px; right: 12px; width: 44px; height: 44px; }
+  .theme-toggle { top: 64px; right: 12px; width: 44px; height: 44px; }
+  .maptype { top: 116px; right: 12px; }
 
   /* 줌 버튼 숨김 (손가락 핀치 줌으로 대체) */
   .zoom { display: none; }

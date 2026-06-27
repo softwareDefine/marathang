@@ -1334,6 +1334,70 @@ function setupAuth() {
 }
 setupAuth();
 
+// ── 첫 방문 튜토리얼 ────────────────────────────────────────────
+const TOUR_KEY = "marathang_tour_seen";
+const TOUR_STEPS = [
+  {
+    title: "전국 마라톤 코스를 한 지도에",
+    body: "2026 전국 마라톤 대회의 코스를 한 지도 위에 겹쳐 보여줘요. 출발지·거리·일정을 한눈에 비교하세요.",
+  },
+  {
+    title: "지도를 확대하면 코스가 보여요",
+    body: "멀리 보면 시·도/시·군별 대회 수로 묶여 보이고, 확대할수록 실제 코스 선과 출발 지점이 나타나요. 우측 줌(+/−)으로 조절하세요.",
+  },
+  {
+    title: "코스 정보 보기",
+    body: "코스 선에 마우스를 올리거나 클릭하면 대회 정보(장소·거리·일정·참가비)가 떠요. 반환점·급수대 같은 지점도 표시돼요.",
+  },
+  {
+    title: "검색하고 켜고 끄기",
+    body: "왼쪽 검색창으로 대회를 찾고, 코스 목록의 거리 칩을 눌러 지도 표시를 켜고 끌 수 있어요. ‘전체 끄기’로 한 번에 정리할 수도 있어요.",
+  },
+  {
+    title: "로그인하면 더 편해요",
+    body: "카카오·네이버로 로그인하면 관심 대회 저장 같은 기능을 쓸 수 있어요(준비 중). 우측 위 로그인 버튼에서 시작하세요.",
+  },
+];
+function setupTour() {
+  const tour = document.getElementById("tour");
+  if (!tour) return;
+  const body = document.getElementById("tour-body");
+  const dots = document.getElementById("tour-dots");
+  const prevBtn = document.getElementById("tour-prev");
+  const nextBtn = document.getElementById("tour-next");
+  const skipBtn = document.getElementById("tour-skip");
+  const dontShow = document.getElementById("tour-dontshow");
+  let i = 0;
+
+  function render() {
+    const s = TOUR_STEPS[i];
+    body.innerHTML =
+      '<div class="tour__step">' +
+      '<span class="tour__count">' + (i + 1) + " / " + TOUR_STEPS.length + "</span>" +
+      "<h2>" + escHtml(s.title) + "</h2><p>" + escHtml(s.body) + "</p></div>";
+    dots.innerHTML = TOUR_STEPS.map((_, k) =>
+      '<span class="tour__dot' + (k === i ? " is-on" : "") + '"></span>').join("");
+    prevBtn.disabled = i === 0;
+    nextBtn.textContent = i === TOUR_STEPS.length - 1 ? "시작하기" : "다음";
+  }
+  function open() { tour.hidden = false; i = 0; render(); }
+  function close() {
+    tour.hidden = true;
+    if (dontShow.checked) { try { localStorage.setItem(TOUR_KEY, "1"); } catch (_) {} }
+  }
+  prevBtn.addEventListener("click", () => { if (i > 0) { i--; render(); } });
+  nextBtn.addEventListener("click", () => { if (i < TOUR_STEPS.length - 1) { i++; render(); } else close(); });
+  skipBtn.addEventListener("click", close);
+  tour.querySelectorAll("[data-tour-close]").forEach((el) => el.addEventListener("click", close));
+  document.addEventListener("keydown", (e) => { if (!tour.hidden && e.key === "Escape") close(); });
+
+  let seen = false;
+  try { seen = localStorage.getItem(TOUR_KEY) === "1"; } catch (_) {}
+  if (!seen) open();
+  window.openTour = open; // 나중에 도움말 버튼에서 재호출 가능
+}
+setupTour();
+
 // 부트스트랩
 loadCourses()
   .then(loadViews)

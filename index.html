@@ -201,6 +201,24 @@
       </div>
     </section>
 
+    <!-- 첫 방문 튜토리얼 -->
+    <div id="tour" class="tour" hidden>
+      <div class="tour__backdrop" data-tour-close></div>
+      <div class="tour__card" role="dialog" aria-modal="true" aria-label="사용 안내">
+        <button type="button" class="tour__x" data-tour-close aria-label="닫기">&times;</button>
+        <div id="tour-body" class="tour__body"><!-- JS로 채움 --></div>
+        <div class="tour__dots" id="tour-dots"></div>
+        <div class="tour__actions">
+          <button type="button" class="tour__skip" id="tour-skip">건너뛰기</button>
+          <div class="tour__nav">
+            <button type="button" class="tour__btn tour__btn--ghost" id="tour-prev">이전</button>
+            <button type="button" class="tour__btn" id="tour-next">다음</button>
+          </div>
+        </div>
+        <label class="tour__dontshow"><input type="checkbox" id="tour-dontshow" checked /> 다시 보지 않기</label>
+      </div>
+    </div>
+
     <!-- 의견 보내기 (기능 제안 / 문제 신고) -->
     <button id="fb-open" class="fb-btn" type="button" title="기능 제안 / 문제 신고">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5z" /></svg>

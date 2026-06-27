@@ -458,17 +458,16 @@ html, body {
 .sidebar {
   position: absolute;
   z-index: 10;
-  top: 68px;                         /* 검색창(16+52) 바로 아래에 붙음 */
+  top: 74px;
   left: 16px;
   width: 320px;
-  max-height: calc(100vh - 84px);
+  max-height: calc(100vh - 90px);
   overflow-y: auto;
   background: var(--float-bg);
   backdrop-filter: blur(8px);
   border: 1px solid var(--line);
-  border-top: 1px solid var(--line); /* 검색창과의 구분선 1개 */
-  border-radius: 0 0 16px 16px;
-  padding: 16px 20px 20px;
+  border-radius: 16px;
+  padding: 20px;
   box-shadow: var(--float-shadow);
 }
 /* 브랜드 로고 (독립 박스) */
@@ -501,7 +500,7 @@ html, body {
 }
 .brand__accent { color: var(--accent); }
 
-/* 검색창 — 코스목록 패널 상단 헤더(아래 목록과 한 박스로 연결) */
+/* 검색창 (독립 박스) */
 .search {
   display: flex;
   align-items: center;
@@ -511,8 +510,7 @@ html, body {
   background: var(--float-bg);
   backdrop-filter: blur(8px);
   border: 1px solid var(--line);
-  border-bottom: 0;                 /* 아래 사이드바와 이음 */
-  border-radius: 14px 14px 0 0;
+  border-radius: 14px;
   padding: 0 14px;
   box-shadow: var(--float-shadow);
 }
@@ -1081,3 +1079,40 @@ textarea.fb-field__input { resize: vertical; min-height: 92px; }
 .agg--sido { padding: 8px 16px; border-color: var(--accent); }
 .agg--sido b { font-family: "NanumSquareNeoHeavy", "NanumSquareNeoBold", sans-serif; font-size: 17px; }
 .agg:hover { border-color: var(--accent); }
+
+/* ── 첫 방문 튜토리얼 ── */
+.tour { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; }
+.tour[hidden] { display: none; }
+.tour__backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.6); }
+.tour__card {
+  position: relative; width: 380px; max-width: calc(100vw - 32px);
+  display: flex; flex-direction: column; gap: 16px; padding: 26px 24px 20px;
+  background: var(--card, var(--float-bg)); border: 1px solid var(--line);
+  border-radius: 18px; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+.tour__x {
+  position: absolute; top: 12px; right: 12px; width: 32px; height: 32px;
+  border: 0; background: transparent; color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer;
+}
+.tour__x:hover { color: var(--text); }
+.tour__step { min-height: 116px; }
+.tour__count { font-size: 12px; font-weight: 700; color: var(--accent); }
+.tour__body h2 { margin: 8px 0 10px; font-size: 20px; }
+.tour__body p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
+.tour__dots { display: flex; gap: 6px; justify-content: center; }
+.tour__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.tour__dot.is-on { background: var(--accent); }
+.tour__actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tour__nav { display: flex; gap: 8px; }
+.tour__skip {
+  background: transparent; border: 0; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer;
+}
+.tour__skip:hover { color: var(--text); }
+.tour__btn {
+  height: 38px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--accent);
+  background: var(--accent); color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+.tour__btn--ghost { background: transparent; color: var(--text); border-color: var(--line); }
+.tour__btn--ghost:disabled { opacity: 0.4; cursor: default; }
+.tour__dontshow { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); cursor: pointer; }
+.tour__dontshow input { accent-color: var(--accent); }

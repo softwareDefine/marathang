@@ -122,8 +122,10 @@ html, body {
 }
 .topbar__right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
-/* ── 로그인(카카오·네이버) 위젯 ── */
-.auth { position: relative; }
+/* ── 로그인(카카오·네이버) 위젯 — 지도/위성 아래 우측 ── */
+.auth { position: absolute; z-index: 11; top: 72px; right: 16px; }
+.auth__menu { right: 0; }
+.auth__user { justify-content: flex-end; }
 .auth__login {
   flex: none; width: 40px; height: 40px; padding: 0; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
@@ -295,7 +297,7 @@ html, body {
 .tools {
   position: absolute;
   z-index: 11;
-  top: 72px;
+  top: 128px;
   right: 16px;
   display: flex;
   flex-direction: column;

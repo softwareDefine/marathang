@@ -122,8 +122,8 @@ html, body {
 }
 .topbar__right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
-/* ── 로그인(카카오·네이버) 위젯 — 지도/위성 아래 우측 ── */
-.auth { position: absolute; z-index: 11; top: 72px; right: 16px; }
+/* ── 로그인(카카오·네이버) 위젯 — 지도/위성·테마 아래 우측 ── */
+.auth { position: absolute; z-index: 11; top: 128px; right: 16px; }
 .auth__menu { right: 0; }
 .auth__login {
   flex: none; width: 44px; height: 44px; padding: 0; border-radius: 12px;
@@ -178,11 +178,15 @@ html, body {
 .login-modal__title { margin: 0; font-size: 20px; }
 .login-modal__sub { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
 
-/* 테마 토글 (로고 오른쪽, 아이콘 버튼) */
+/* 테마 토글 — 지도/위성 바로 아래 (우측 컨트롤 열) */
 .theme-toggle {
+  position: absolute;
+  z-index: 11;
+  top: 72px;
+  right: 16px;
   flex: none;
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   display: flex;
   align-items: center;
@@ -308,7 +312,7 @@ html, body {
 .tools {
   position: absolute;
   z-index: 11;
-  top: 128px;
+  top: 184px;
   right: 16px;
   display: flex;
   flex-direction: column;

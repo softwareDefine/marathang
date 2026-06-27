@@ -471,6 +471,15 @@ html, body {
   box-shadow: var(--float-shadow);
 }
 /* 브랜드 로고 (독립 박스) */
+/* 검색창에 통합된 로고 마크 (m·t) */
+.brand__mark {
+  flex: none;
+  font-family: "NanumSquareNeoHeavy", "NanumSquareNeo", sans-serif;
+  font-size: 20px; font-weight: 800; font-style: italic; letter-spacing: -0.03em;
+  line-height: 1; color: var(--text); user-select: none;
+  padding-right: 10px; margin-right: 2px; border-right: 1px solid var(--line);
+}
+
 .brand {
   display: flex;
   align-items: center;

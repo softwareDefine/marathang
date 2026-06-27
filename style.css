@@ -305,8 +305,8 @@ html, body {
   gap: 8px;
 }
 .tool__btn {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   padding: 0;
@@ -330,7 +330,7 @@ html, body {
 }
 /* 글자형 도구 버튼(거리재기·거리뷰) — 현위치 아이콘과 같은 너비, 좁으면 두 줄(거리/재기) */
 .tool__btn--text {
-  width: 48px; height: auto; min-height: 48px;
+  width: 44px; height: auto; min-height: 44px;
   padding: 5px 3px; font-size: 13px; font-weight: 600; line-height: 1.2;
   white-space: normal; text-align: center; color: var(--text);
 }

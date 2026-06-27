@@ -458,16 +458,17 @@ html, body {
 .sidebar {
   position: absolute;
   z-index: 10;
-  top: 74px;
+  top: 68px;                         /* 검색창(16+52) 바로 아래에 붙음 */
   left: 16px;
   width: 320px;
-  max-height: calc(100vh - 90px);
+  max-height: calc(100vh - 84px);
   overflow-y: auto;
   background: var(--float-bg);
   backdrop-filter: blur(8px);
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 20px;
+  border-top: 1px solid var(--line); /* 검색창과의 구분선 1개 */
+  border-radius: 0 0 16px 16px;
+  padding: 16px 20px 20px;
   box-shadow: var(--float-shadow);
 }
 /* 브랜드 로고 (독립 박스) */
@@ -500,7 +501,7 @@ html, body {
 }
 .brand__accent { color: var(--accent); }
 
-/* 검색창 (독립 박스) */
+/* 검색창 — 코스목록 패널 상단 헤더(아래 목록과 한 박스로 연결) */
 .search {
   display: flex;
   align-items: center;
@@ -510,7 +511,8 @@ html, body {
   background: var(--float-bg);
   backdrop-filter: blur(8px);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-bottom: 0;                 /* 아래 사이드바와 이음 */
+  border-radius: 14px 14px 0 0;
   padding: 0 14px;
   box-shadow: var(--float-shadow);
 }
@@ -865,7 +867,7 @@ html:not([data-theme="light"]) .map img[src*="/styles/basic/"] {
 @media (max-width: 640px) {
   /* 검색: 폭 축소(우상단 컨트롤과 안 겹치게) */
   .topbar { top: 12px; left: 12px; gap: 10px; }
-  .search { width: min(320px, calc(100vw - 92px)); height: 48px; }
+  .search { width: min(320px, calc(100vw - 92px)); height: 48px; border: 1px solid var(--line); border-radius: 14px; }
   /* 우측 컨트롤 열을 화면 안쪽으로 (검색창과 안 겹치게) */
   .auth { top: 12px; right: 12px; }
   .theme-toggle { top: 64px; right: 12px; width: 44px; height: 44px; }

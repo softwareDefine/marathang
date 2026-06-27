@@ -1336,31 +1336,26 @@ setupAuth();
 
 // ── 첫 방문 튜토리얼 ────────────────────────────────────────────
 const TOUR_KEY = "marathang_tour_seen";
+// sel: 강조할 실제 UI 요소. pos: 말풍선 위치(center/below/right/left)
 const TOUR_STEPS = [
-  {
-    title: "전국 마라톤 코스를 한 지도에",
-    body: "2026 전국 마라톤 대회의 코스를 한 지도 위에 겹쳐 보여줘요. 출발지·거리·일정을 한눈에 비교하세요.",
-  },
-  {
-    title: "지도를 확대하면 코스가 보여요",
-    body: "멀리 보면 시·도/시·군별 대회 수로 묶여 보이고, 확대할수록 실제 코스 선과 출발 지점이 나타나요. 우측 줌(+/−)으로 조절하세요.",
-  },
-  {
-    title: "코스 정보 보기",
-    body: "코스 선에 마우스를 올리거나 클릭하면 대회 정보(장소·거리·일정·참가비)가 떠요. 반환점·급수대 같은 지점도 표시돼요.",
-  },
-  {
-    title: "검색하고 켜고 끄기",
-    body: "왼쪽 검색창으로 대회를 찾고, 코스 목록의 거리 칩을 눌러 지도 표시를 켜고 끌 수 있어요. ‘전체 끄기’로 한 번에 정리할 수도 있어요.",
-  },
-  {
-    title: "로그인하면 더 편해요",
-    body: "카카오·네이버로 로그인하면 관심 대회 저장 같은 기능을 쓸 수 있어요(준비 중). 우측 위 로그인 버튼에서 시작하세요.",
-  },
+  { sel: null, pos: "center", title: "전국 마라톤 코스를 한 지도에",
+    body: "2026 전국 마라톤 대회의 코스를 한 지도 위에 겹쳐 보여줘요. 잠깐 둘러볼까요?" },
+  { sel: ".search", pos: "below", title: "여기서 검색",
+    body: "대회 이름·장소·거리로 검색하면 지도와 목록이 함께 걸러져요." },
+  { sel: ".sidebar", pos: "right", title: "코스 목록 — 켜고 끄기",
+    body: "거리 칩을 눌러 지도에 표시할 코스를 켜고 끌 수 있어요. ‘전체 끄기’로 한 번에 정리도 돼요." },
+  { sel: ".zoom", pos: "left", title: "확대하면 코스가 보여요",
+    body: "멀리 보면 지역별 대회 수로 묶이고, 확대할수록 실제 코스 선·출발 지점이 나타나요." },
+  { sel: "#maptype", pos: "left", title: "지도 / 위성",
+    body: "버튼을 눌러 일반↔위성 전환, ‘‹’로 위성+라벨·지형까지 고를 수 있어요." },
+  { sel: "#auth", pos: "left", title: "로그인",
+    body: "카카오·네이버로 로그인하면 관심 대회 저장 같은 기능을 쓸 수 있어요(준비 중)." },
 ];
 function setupTour() {
   const tour = document.getElementById("tour");
   if (!tour) return;
+  const spot = document.getElementById("tour-spot");
+  const pop = document.getElementById("tour-pop");
   const body = document.getElementById("tour-body");
   const dots = document.getElementById("tour-dots");
   const prevBtn = document.getElementById("tour-prev");
@@ -1368,6 +1363,42 @@ function setupTour() {
   const skipBtn = document.getElementById("tour-skip");
   const dontShow = document.getElementById("tour-dontshow");
   let i = 0;
+
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  function place() {
+    const s = TOUR_STEPS[i];
+    const t = s.sel ? document.querySelector(s.sel) : null;
+    const r = t ? t.getBoundingClientRect() : null;
+    const vw = window.innerWidth, vh = window.innerHeight, M = 12, GAP = 14;
+    const pw = pop.offsetWidth, ph = pop.offsetHeight;
+
+    if (!r || r.width === 0 || r.height === 0) {
+      // 대상 없음/안 보임 → 화면 중앙, 스포트라이트 숨김
+      spot.style.opacity = "0";
+      pop.style.left = clamp((vw - pw) / 2, M, vw - pw - M) + "px";
+      pop.style.top = clamp((vh - ph) / 2, M, vh - ph - M) + "px";
+      return;
+    }
+    const pad = 6;
+    spot.style.opacity = "1";
+    spot.style.left = r.left - pad + "px";
+    spot.style.top = r.top - pad + "px";
+    spot.style.width = r.width + pad * 2 + "px";
+    spot.style.height = r.height + pad * 2 + "px";
+
+    let left, top;
+    if (s.pos === "right") { left = r.right + GAP; top = r.top; }
+    else if (s.pos === "left") { left = r.left - pw - GAP; top = r.top; }
+    else if (s.pos === "below") { left = r.left; top = r.bottom + GAP; }
+    else { left = r.left; top = r.top - ph - GAP; } // above
+    // 화면 밖이면 반대편/안쪽으로 보정
+    if (left < M) left = (s.pos === "left") ? r.right + GAP : M;
+    if (left + pw > vw - M) left = (s.pos === "right") ? r.left - pw - GAP : vw - pw - M;
+    if (top + ph > vh - M) top = vh - ph - M;
+    pop.style.left = clamp(left, M, vw - pw - M) + "px";
+    pop.style.top = clamp(top, M, vh - ph - M) + "px";
+  }
 
   function render() {
     const s = TOUR_STEPS[i];
@@ -1379,6 +1410,7 @@ function setupTour() {
       '<span class="tour__dot' + (k === i ? " is-on" : "") + '"></span>').join("");
     prevBtn.disabled = i === 0;
     nextBtn.textContent = i === TOUR_STEPS.length - 1 ? "시작하기" : "다음";
+    place();
   }
   function open() { tour.hidden = false; i = 0; render(); }
   function close() {
@@ -1390,11 +1422,12 @@ function setupTour() {
   skipBtn.addEventListener("click", close);
   tour.querySelectorAll("[data-tour-close]").forEach((el) => el.addEventListener("click", close));
   document.addEventListener("keydown", (e) => { if (!tour.hidden && e.key === "Escape") close(); });
+  window.addEventListener("resize", () => { if (!tour.hidden) place(); });
 
   let seen = false;
   try { seen = localStorage.getItem(TOUR_KEY) === "1"; } catch (_) {}
   if (!seen) open();
-  window.openTour = open; // 나중에 도움말 버튼에서 재호출 가능
+  window.openTour = open; // 도움말 버튼 등에서 재호출 가능
 }
 setupTour();
 

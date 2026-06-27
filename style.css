@@ -1080,25 +1080,32 @@ textarea.fb-field__input { resize: vertical; min-height: 92px; }
 .agg--sido b { font-family: "NanumSquareNeoHeavy", "NanumSquareNeoBold", sans-serif; font-size: 17px; }
 .agg:hover { border-color: var(--accent); }
 
-/* ── 첫 방문 튜토리얼 ── */
-.tour { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; }
+/* ── 첫 방문 튜토리얼 (스포트라이트) ── */
+.tour { position: fixed; inset: 0; z-index: 200; }
 .tour[hidden] { display: none; }
-.tour__backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.6); }
-.tour__card {
-  position: relative; width: 380px; max-width: calc(100vw - 32px);
-  display: flex; flex-direction: column; gap: 16px; padding: 26px 24px 20px;
+/* 강조 박스: 큰 box-shadow로 주변을 어둡게, 대상만 환하게 */
+.tour__spot {
+  position: absolute; border-radius: 12px; pointer-events: none;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.62);
+  transition: all 0.25s ease; opacity: 0;
+}
+.tour__pop {
+  position: absolute; width: 300px; max-width: calc(100vw - 24px);
+  display: flex; flex-direction: column; gap: 14px; padding: 22px 20px 16px;
   background: var(--card, var(--float-bg)); border: 1px solid var(--line);
-  border-radius: 18px; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  border-radius: 16px; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  transition: top 0.25s ease, left 0.25s ease;
 }
 .tour__x {
   position: absolute; top: 12px; right: 12px; width: 32px; height: 32px;
   border: 0; background: transparent; color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer;
 }
 .tour__x:hover { color: var(--text); }
-.tour__step { min-height: 116px; }
+.tour__step { min-height: 92px; }
 .tour__count { font-size: 12px; font-weight: 700; color: var(--accent); }
-.tour__body h2 { margin: 8px 0 10px; font-size: 20px; }
-.tour__body p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
+.tour__body h2 { margin: 7px 0 8px; font-size: 18px; }
+.tour__body p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
 .tour__dots { display: flex; gap: 6px; justify-content: center; }
 .tour__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
 .tour__dot.is-on { background: var(--accent); }

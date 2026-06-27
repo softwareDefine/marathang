@@ -1282,10 +1282,15 @@ function setupAuth() {
   const root = document.getElementById("auth");
   if (!root) return;
   const loginBtn = document.getElementById("auth-login");
-  const menu = document.getElementById("auth-menu");
+  const modal = document.getElementById("login-modal");
   const userBox = document.getElementById("auth-user");
-  loginBtn.addEventListener("click", (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; });
-  document.addEventListener("click", (e) => { if (!e.target.closest("#auth")) menu.hidden = true; });
+  const openModal = () => { if (modal) modal.hidden = false; };
+  const closeModal = () => { if (modal) modal.hidden = true; };
+  loginBtn.addEventListener("click", openModal);
+  if (modal) {
+    modal.querySelectorAll("[data-login-close]").forEach((el) => el.addEventListener("click", closeModal));
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+  }
   document.getElementById("auth-logout").addEventListener("click", () => {
     fetch("/auth/logout", { method: "POST" }).then(() => location.reload());
   });
@@ -1297,7 +1302,7 @@ function setupAuth() {
     .then((r) => r.json())
     .then(({ user }) => {
       if (!user) return;
-      loginBtn.hidden = true; menu.hidden = true; userBox.hidden = false;
+      loginBtn.hidden = true; closeModal(); userBox.hidden = false;
       document.getElementById("auth-name").textContent = user.name || "사용자";
       const av = document.getElementById("auth-avatar");
       if (user.picture) { av.src = user.picture; av.hidden = false; } else { av.hidden = true; }

@@ -125,7 +125,6 @@ html, body {
 /* ── 로그인(카카오·네이버) 위젯 — 지도/위성 아래 우측 ── */
 .auth { position: absolute; z-index: 11; top: 72px; right: 16px; }
 .auth__menu { right: 0; }
-.auth__user { justify-content: flex-end; }
 .auth__login {
   flex: none; width: 44px; height: 44px; padding: 0; border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
@@ -139,21 +138,14 @@ html, body {
 }
 .auth__login:hover { border-color: var(--accent); color: var(--accent); }
 .auth__login[hidden] { display: none; }
-.auth__menu {
-  position: absolute; right: 0; top: calc(100% + 8px); z-index: 50;
-  display: flex; flex-direction: column; gap: 6px; padding: 8px; min-width: 168px;
-  background: var(--float-bg); border: 1px solid var(--line); border-radius: 12px;
-  box-shadow: var(--float-shadow); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-}
-.auth__menu[hidden] { display: none; }
 .auth__opt {
-  display: block; padding: 11px 12px; border-radius: 8px; text-decoration: none;
-  font-size: 14px; font-weight: 700; text-align: center; color: #191919;
+  display: block; padding: 13px 12px; border-radius: 10px; text-decoration: none;
+  font-size: 15px; font-weight: 700; text-align: center; color: #191919;
 }
 .auth__opt--kakao { background: #fee500; }
 .auth__opt--naver { background: #03c75a; color: #fff; }
 .auth__opt:hover { filter: brightness(0.96); }
-.auth__user { display: flex; align-items: center; gap: 8px; }
+.auth__user { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
 .auth__user[hidden] { display: none; }
 .auth__avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); }
 .auth__avatar[hidden] { display: none; }
@@ -167,6 +159,24 @@ html, body {
   font: inherit; font-size: 12px; cursor: pointer;
 }
 .auth__logout:hover { border-color: var(--accent); color: var(--accent); }
+
+/* 로그인 모달 (중앙 팝업) */
+.login-modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
+.login-modal[hidden] { display: none; }
+.login-modal__backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); }
+.login-modal__card {
+  position: relative; width: 320px; max-width: calc(100vw - 32px);
+  display: flex; flex-direction: column; gap: 10px; padding: 24px;
+  background: var(--card, var(--float-bg)); border: 1px solid var(--line);
+  border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+.login-modal__x {
+  position: absolute; top: 12px; right: 12px; width: 32px; height: 32px;
+  border: 0; background: transparent; color: var(--muted); font-size: 22px; cursor: pointer; line-height: 1;
+}
+.login-modal__x:hover { color: var(--text); }
+.login-modal__title { margin: 0; font-size: 20px; }
+.login-modal__sub { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
 
 /* 테마 토글 (로고 오른쪽, 아이콘 버튼) */
 .theme-toggle {

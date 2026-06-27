@@ -132,14 +132,22 @@
       <button id="auth-login" class="auth__login" type="button" aria-label="로그인" title="로그인">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" /><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /></svg>
       </button>
-      <div id="auth-menu" class="auth__menu" hidden>
-        <a class="auth__opt auth__opt--kakao" href="/auth/kakao/login">카카오로 시작</a>
-        <a class="auth__opt auth__opt--naver" href="/auth/naver/login">네이버로 시작</a>
-      </div>
       <div id="auth-user" class="auth__user" hidden>
         <img id="auth-avatar" class="auth__avatar" alt="" hidden />
         <span id="auth-name" class="auth__name"></span>
         <button id="auth-logout" class="auth__logout" type="button">로그아웃</button>
+      </div>
+    </div>
+
+    <!-- 로그인 모달 -->
+    <div id="login-modal" class="login-modal" hidden>
+      <div class="login-modal__backdrop" data-login-close></div>
+      <div class="login-modal__card">
+        <button type="button" class="login-modal__x" data-login-close aria-label="닫기">&times;</button>
+        <h2 class="login-modal__title">로그인</h2>
+        <p class="login-modal__sub">소셜 계정으로 간편하게 시작하세요.</p>
+        <a class="auth__opt auth__opt--kakao" href="/auth/kakao/login">카카오로 시작</a>
+        <a class="auth__opt auth__opt--naver" href="/auth/naver/login">네이버로 시작</a>
       </div>
     </div>
 

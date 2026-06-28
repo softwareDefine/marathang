@@ -147,10 +147,7 @@ html, body {
 .auth__opt:hover { filter: brightness(0.96); }
 .auth__user {
   display: flex; align-items: center; gap: 8px; justify-content: flex-end;
-  height: 44px; padding: 0 8px 0 10px; border-radius: 12px;
-  background: var(--float-bg); border: 1px solid var(--line);
-  box-shadow: var(--float-shadow);
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  height: 44px;
 }
 .auth__user[hidden] { display: none; }
 .auth__avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); }
@@ -158,6 +155,7 @@ html, body {
 .auth__name {
   font-size: 14px; font-weight: 700; color: var(--text);
   max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
 }
 .auth__logout {
   height: 30px; padding: 0 12px; border-radius: 999px;

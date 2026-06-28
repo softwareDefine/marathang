@@ -17,6 +17,7 @@ const LOCKS_KEY = process.env.LOCKS_KEY || "locks.json"; // 편집 락 (courses.
 const FEEDBACK_KEY = process.env.FEEDBACK_KEY || "feedback.json"; // 사용자 의견 (별도 키)
 const VIEWS_KEY = process.env.VIEWS_KEY || "views.json"; // 대회별 조회수 (별도 키)
 const USERS_KEY = process.env.USERS_KEY || "users.json"; // 소셜 로그인 유저 (별도 키)
+const COMMENTS_KEY = process.env.COMMENTS_KEY || "comments.json"; // 대회별 댓글 (별도 키)
 const s3 = new S3Client({});
 
 async function streamToString(stream) {
@@ -123,6 +124,25 @@ const s3Store = {
     await s3.send(new PutObjectCommand({
       Bucket: BUCKET,
       Key: USERS_KEY,
+      Body: JSON.stringify(map, null, 2) + "\n",
+      ContentType: "application/json; charset=utf-8",
+    }));
+  },
+  // 대회별 댓글. 객체 없음(403/404)을 빈 맵으로 처리.
+  async readComments() {
+    try {
+      const out = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: COMMENTS_KEY }));
+      return JSON.parse(await streamToString(out.Body));
+    } catch (e) {
+      const code = e.$metadata && e.$metadata.httpStatusCode;
+      if (e.name === "NoSuchKey" || e.name === "NotFound" || e.name === "AccessDenied" || code === 404 || code === 403) return {};
+      throw e;
+    }
+  },
+  async writeComments(map) {
+    await s3.send(new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: COMMENTS_KEY,
       Body: JSON.stringify(map, null, 2) + "\n",
       ContentType: "application/json; charset=utf-8",
     }));

@@ -11,6 +11,7 @@ locks.json
 feedback.json
 views.json
 users.json
+comments.json
 
 # OS
 Thumbs.db

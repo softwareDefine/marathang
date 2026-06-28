@@ -11,7 +11,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const { handleAuth } = require("./auth.js");
+const { handleAuth, userFromHeaders } = require("./auth.js");
 
 const ROOT = __dirname;
 const DATA_FILE = path.join(ROOT, "courses.json");
@@ -20,6 +20,9 @@ const FEEDBACK_FILE = path.join(ROOT, "feedback.json"); // 사용자 의견(제�
 const FEEDBACK_MAX = 1000; // 보관 상한 (오래된 건 잘림)
 const VIEWS_FILE = path.join(ROOT, "views.json"); // 대회별 조회수 { eventId: count } — courses.json과 분리
 const USERS_FILE = path.join(ROOT, "users.json"); // 소셜 로그인 유저 { uid: {...} } — courses.json과 분리
+const COMMENTS_FILE = path.join(ROOT, "comments.json"); // 대회별 댓글 { eventId: [...] } — 분리
+const COMMENT_MAX = 2000; // 대회당 댓글 보관 상한
+const COMMENT_LEN = 1000; // 댓글 최대 길이
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "marathangisspicy";
 // 편집 락 TTL. 하트비트(클라가 주기적으로 갱신)가 끊기면 이만큼 뒤 자동 만료 →
 // 탭을 그냥 닫아도 락이 영구히 박히지 않음.
@@ -77,6 +80,14 @@ const fileStore = {
   },
   async writeUsers(map) {
     fs.writeFileSync(USERS_FILE, JSON.stringify(map, null, 2) + "\n", "utf-8");
+  },
+  // 대회별 댓글(커뮤니티) { eventId: [ {id,uid,name,text,ts}, ... ] }
+  async readComments() {
+    try { return JSON.parse(fs.readFileSync(COMMENTS_FILE, "utf-8")); }
+    catch { return {}; }
+  },
+  async writeComments(map) {
+    fs.writeFileSync(COMMENTS_FILE, JSON.stringify(map, null, 2) + "\n", "utf-8");
   },
 };
 let store = fileStore;
@@ -242,6 +253,65 @@ async function handleApi({ method, pathname, headers, body }) {
     return json(200, { count: views[id] });
   }
 
+  // ── 즐겨찾기 (로그인 유저) ────────────────────────────────────
+  // GET /api/favorites → 내 즐겨찾기 eventId 배열
+  if (parts[1] === "favorites" && method === "GET" && parts.length === 2) {
+    const u = userFromHeaders(headers);
+    if (!u) return json(200, { favorites: [] });
+    const users = await store.readUsers();
+    return json(200, { favorites: (users[u.uid] && users[u.uid].favorites) || [] });
+  }
+  // POST /api/favorites/:eventId → 토글. 반환 { favorites, on }
+  if (parts[1] === "favorites" && method === "POST" && id) {
+    const u = userFromHeaders(headers);
+    if (!u) return json(401, { error: "로그인이 필요해요" });
+    const users = await store.readUsers();
+    const user = users[u.uid] || (users[u.uid] = { id: u.uid, name: u.name, provider: u.provider, createdAt: Date.now() });
+    const favs = Array.isArray(user.favorites) ? user.favorites : [];
+    const i = favs.indexOf(id);
+    let on;
+    if (i >= 0) { favs.splice(i, 1); on = false; } else { favs.unshift(id); on = true; }
+    user.favorites = favs;
+    await store.writeUsers(users);
+    return json(200, { favorites: favs, on });
+  }
+
+  // ── 대회별 댓글(커뮤니티) ─────────────────────────────────────
+  // GET /api/comments/:eventId → 목록 (공개)
+  if (parts[1] === "comments" && method === "GET" && id) {
+    const all = await store.readComments();
+    return json(200, { comments: all[id] || [] });
+  }
+  // POST /api/comments/:eventId → 작성 (로그인 필요). body { text }
+  if (parts[1] === "comments" && method === "POST" && id) {
+    const u = userFromHeaders(headers);
+    if (!u) return json(401, { error: "로그인이 필요해요" });
+    let text = "";
+    try { text = String(JSON.parse(body || "{}").text || "").trim(); } catch {}
+    if (!text) return json(400, { error: "내용을 입력하세요" });
+    if (text.length > COMMENT_LEN) text = text.slice(0, COMMENT_LEN);
+    const all = await store.readComments();
+    const list = Array.isArray(all[id]) ? all[id] : [];
+    const item = { id: "c" + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36), uid: u.uid, name: u.name || "사용자", text, ts: Date.now() };
+    list.push(item);
+    all[id] = list.slice(-COMMENT_MAX);
+    await store.writeComments(all);
+    return json(201, item);
+  }
+  // DELETE /api/comments/:eventId/:commentId → 작성자 또는 어드민
+  if (parts[1] === "comments" && method === "DELETE" && id && parts[3]) {
+    const cid = decodeURIComponent(parts[3]);
+    const u = userFromHeaders(headers);
+    const all = await store.readComments();
+    const list = Array.isArray(all[id]) ? all[id] : [];
+    const c = list.find((x) => x.id === cid);
+    if (!c) return json(404, { error: "없는 댓글" });
+    if (!isAuthed && (!u || u.uid !== c.uid)) return json(403, { error: "본인 댓글만 삭제할 수 있어요" });
+    all[id] = list.filter((x) => x.id !== cid);
+    await store.writeComments(all);
+    return json(200, { ok: true });
+  }
+
   // 이하 쓰기 + 락 API는 비밀번호 필요
   if (!(method === "GET" && parts[1] === "courses") && !isAuthed)
     return json(401, { error: "비밀번호가 올바르지 않습니다." });
@@ -342,8 +412,9 @@ function serveStatic(pathname) {
   let rel = decodeURIComponent(pathname);
   if (rel === "/") rel = "/index.html";
   if (rel === "/admin" || rel === "/admin/") rel = "/admin.html";
-  // 런타임 데이터 파일은 정적으로 절대 노출하지 않음(유저 PII 등)
-  if (/^\/(users|locks|feedback|views)\.json$/i.test(rel))
+  // 런타임 데이터 파일·서버 소스는 정적으로 절대 노출하지 않음(유저 PII·내부 코드)
+  if (/^\/(users|locks|feedback|views|comments)\.json$/i.test(rel) ||
+      /^\/(server|lambda|auth)\.js$/i.test(rel))
     return { statusCode: 404, headers: { "Content-Type": "text/plain; charset=utf-8" }, body: "404 Not Found" };
   const filePath = path.normalize(path.join(ROOT, rel));
   if (!filePath.startsWith(ROOT)) {

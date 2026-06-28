@@ -134,6 +134,10 @@ exports.handler = async (event) => {
   const method = (event.requestContext && event.requestContext.http && event.requestContext.http.method) || "GET";
   const pathname = event.rawPath || "/";
   const headers = event.headers || {};
+  // payload v2는 들어오는 쿠키를 event.cookies 배열로 줌 → headers.cookie로 복원(세션/OAuth state용)
+  if (Array.isArray(event.cookies) && event.cookies.length && !headers.cookie && !headers.Cookie) {
+    headers.cookie = event.cookies.join("; ");
+  }
   let body = event.body || "";
   if (event.isBase64Encoded && body) body = Buffer.from(body, "base64").toString("utf-8");
 

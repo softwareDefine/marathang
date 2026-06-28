@@ -968,9 +968,10 @@ function setupSearch(items, setVisible) {
   if (!input) return;
 
   // 필터 상태
-  const f = { regions: new Set(), distLo: 0, distHi: 40, feeLo: 0, feeHi: 100000, scale: "all", dateFrom: "", dateTo: "" };
+  const f = { regions: new Set(), distLo: 0, distHi: 40, feeLo: 0, feeHi: 100000, scale: "all", dateFrom: "", dateTo: "", favOnly: false };
 
   function passes(ev) {
+    if (f.favOnly && !FAVORITES.has(ev.id)) return false;
     if (f.regions.size && !f.regions.has(ev.region)) return false;
     // 거리: [distLo, distHi] 안의 종목이 있는 대회만 (distHi=40 → 상한 없음)
     if (!(f.distLo === 0 && f.distHi === 40)) {
@@ -1012,6 +1013,16 @@ function setupSearch(items, setVisible) {
   }
 
   input.addEventListener("input", apply);
+
+  // 즐겨찾기만 보기 토글
+  const favOnlyBtn = document.getElementById("fav-only");
+  if (favOnlyBtn) favOnlyBtn.addEventListener("click", () => {
+    if (!CURRENT_USER && !f.favOnly) { alert("로그인하면 즐겨찾기한 대회만 모아볼 수 있어요."); return; }
+    f.favOnly = !f.favOnly;
+    favOnlyBtn.classList.toggle("is-on", f.favOnly);
+    favOnlyBtn.setAttribute("aria-pressed", String(f.favOnly));
+    apply();
+  });
 
   // 필터 아이콘 → 팝업 토글
   const toggle = document.getElementById("filter-toggle");
@@ -1137,6 +1148,10 @@ function loadCourses() {
     });
 }
 
+// ── 로그인 유저 / 즐겨찾기 상태 ─────────────────────────────────
+let CURRENT_USER = null;       // { id, name, picture, provider } | null
+const FAVORITES = new Set();   // 내 즐겨찾기 eventId
+
 // ── 조회수 ──────────────────────────────────────────────────────
 const VIEWS = {}; // eventId -> count
 // 말풍선(InfoWindow) 내용 빌더 (조회수 포함). 열 때 setContent로 갱신용.
@@ -1150,6 +1165,14 @@ function iwContent(event, v) {
     '<div class="iw__row"><span class="iw__label">일정</span>' + event.date + "</div>" +
     '<div class="iw__row"><span class="iw__label">참가비</span>' + event.fee + "</div>" +
     '<div class="iw__row"><span class="iw__label">조회</span>' + views + "</div>" +
+    "</div>" +
+    '<div class="iw__actions">' +
+    '<button type="button" class="iw__fav' + (FAVORITES.has(event.id) ? " is-on" : "") + '" data-fav="' + escHtml(event.id) + '" aria-pressed="' + FAVORITES.has(event.id) + '">' +
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.6-9.3-9C1.2 9.2 2.5 6 5.6 6c1.9 0 3.2 1.1 4.4 2.6C11.2 7.1 12.5 6 14.4 6c3.1 0 4.4 3.2 2.9 6C19 16.4 12 21 12 21z"/></svg>' +
+    "<span>즐겨찾기</span></button>" +
+    '<button type="button" class="iw__comments" data-comments="' + escHtml(event.id) + '" data-name="' + escHtml(event.name) + '">' +
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5z"/></svg>' +
+    "<span>댓글</span></button>" +
     "</div>" +
     (event.url && event.url !== "#"
       ? '<a class="iw__link" href="' + event.url + '" target="_blank" rel="noopener">공식 사이트</a>'
@@ -1233,6 +1256,118 @@ function setupGpxDownload() {
   });
 }
 setupGpxDownload();
+
+// ── 즐겨찾기 토글 + 댓글 열기 (말풍선 안 버튼, 위임) ────────────
+function setupFavAndComments() {
+  document.addEventListener("click", (e) => {
+    const fav = e.target.closest && e.target.closest(".iw__fav");
+    if (fav) {
+      e.preventDefault();
+      if (!CURRENT_USER) { alert("로그인하면 즐겨찾기를 저장할 수 있어요."); return; }
+      const eid = fav.getAttribute("data-fav");
+      fav.disabled = true;
+      fetch("/api/favorites/" + encodeURIComponent(eid), { method: "POST" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          if (!j) return;
+          if (j.on) FAVORITES.add(eid); else FAVORITES.delete(eid);
+          fav.classList.toggle("is-on", j.on);
+          fav.setAttribute("aria-pressed", String(j.on));
+        })
+        .finally(() => { fav.disabled = false; });
+      return;
+    }
+    const cm = e.target.closest && e.target.closest(".iw__comments");
+    if (cm) {
+      e.preventDefault();
+      openCommunity(cm.getAttribute("data-comments"), cm.getAttribute("data-name"));
+    }
+  });
+}
+setupFavAndComments();
+
+// ── 대회별 커뮤니티(댓글) 패널 ──────────────────────────────────
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return "방금";
+  if (s < 3600) return Math.floor(s / 60) + "분 전";
+  if (s < 86400) return Math.floor(s / 3600) + "시간 전";
+  if (s < 2592000) return Math.floor(s / 86400) + "일 전";
+  const d = new Date(ts);
+  return d.getFullYear() + "." + (d.getMonth() + 1) + "." + d.getDate();
+}
+function openCommunity(eventId, eventName) {
+  const panel = document.getElementById("community");
+  if (!panel) return;
+  panel.hidden = false;
+  document.getElementById("cm-title").textContent = eventName || "대회 커뮤니티";
+  panel.dataset.eventId = eventId;
+  loadComments(eventId);
+  const form = document.getElementById("cm-form");
+  const input = document.getElementById("cm-input");
+  const note = document.getElementById("cm-note");
+  if (CURRENT_USER) { form.hidden = false; note.hidden = true; input.value = ""; input.focus(); }
+  else { form.hidden = true; note.hidden = false; }
+}
+function loadComments(eventId) {
+  const listEl = document.getElementById("cm-list");
+  listEl.innerHTML = '<p class="cm-empty">불러오는 중…</p>';
+  fetch("/api/comments/" + encodeURIComponent(eventId))
+    .then((r) => r.json())
+    .then(({ comments }) => {
+      const list = comments || [];
+      document.getElementById("cm-count").textContent = list.length;
+      if (!list.length) { listEl.innerHTML = '<p class="cm-empty">아직 댓글이 없어요. 첫 댓글을 남겨보세요.</p>'; return; }
+      listEl.innerHTML = "";
+      list.slice().reverse().forEach((c) => {
+        const mine = CURRENT_USER && CURRENT_USER.id === c.uid;
+        const li = document.createElement("div");
+        li.className = "cm-item";
+        li.innerHTML =
+          '<div class="cm-item__head"><span class="cm-item__name">' + escHtml(c.name) + "</span>" +
+          '<span class="cm-item__time">' + timeAgo(c.ts) + "</span>" +
+          (mine ? '<button type="button" class="cm-item__del" title="삭제">삭제</button>' : "") +
+          "</div><div class=\"cm-item__text\">" + escHtml(c.text) + "</div>";
+        if (mine) li.querySelector(".cm-item__del").addEventListener("click", () => {
+          if (!confirm("이 댓글을 삭제할까요?")) return;
+          fetch("/api/comments/" + encodeURIComponent(eventId) + "/" + encodeURIComponent(c.id), { method: "DELETE" })
+            .then((r) => { if (r.ok) loadComments(eventId); });
+        });
+        listEl.appendChild(li);
+      });
+    })
+    .catch(() => { listEl.innerHTML = '<p class="cm-empty">불러오지 못했어요.</p>'; });
+}
+function setupCommunity() {
+  const panel = document.getElementById("community");
+  if (!panel) return;
+  const close = () => { panel.hidden = true; };
+  panel.querySelectorAll("[data-cm-close]").forEach((el) => el.addEventListener("click", close));
+  document.addEventListener("keydown", (e) => { if (!panel.hidden && e.key === "Escape") close(); });
+  const form = document.getElementById("cm-form");
+  const input = document.getElementById("cm-input");
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    const eventId = panel.dataset.eventId;
+    const btn = form.querySelector("button[type=submit]");
+    btn.disabled = true;
+    fetch("/api/comments/" + encodeURIComponent(eventId), {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }),
+    })
+      .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+      .then(({ ok, j }) => { if (!ok) throw new Error(j.error || "실패"); input.value = ""; loadComments(eventId); })
+      .catch((err) => alert(err.message || "전송 실패"))
+      .finally(() => { btn.disabled = false; });
+  });
+  document.getElementById("cm-login").addEventListener("click", () => {
+    close();
+    const lm = document.getElementById("login-modal");
+    if (lm) lm.hidden = false;
+  });
+}
+setupCommunity();
 
 // ── 사용자 의견(기능 제안 / 문제 신고) ───────────────────────────
 function setupFeedback() {
@@ -1325,10 +1460,15 @@ function setupAuth() {
     .then((r) => r.json())
     .then(({ user }) => {
       if (!user) return;
+      CURRENT_USER = user;
       loginBtn.hidden = true; closeModal(); userBox.hidden = false;
       document.getElementById("auth-name").textContent = user.name || "사용자";
       const av = document.getElementById("auth-avatar");
       if (user.picture) { av.src = user.picture; av.hidden = false; } else { av.hidden = true; }
+      // 내 즐겨찾기 로드
+      fetch("/api/favorites").then((r) => r.json()).then((j) => {
+        (j.favorites || []).forEach((id) => FAVORITES.add(id));
+      }).catch(() => {});
     })
     .catch(() => {});
 }

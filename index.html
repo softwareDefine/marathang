@@ -183,7 +183,10 @@
     <aside class="sidebar">
       <div class="sidebar__bar">
         <h2 class="sidebar__title">코스 목록</h2>
-        <button id="toggle-all" class="toggle-all" type="button">전체 끄기</button>
+        <div class="sidebar__bar-btns">
+          <button id="fav-only" class="toggle-all" type="button" aria-pressed="false">즐겨찾기</button>
+          <button id="toggle-all" class="toggle-all" type="button">전체 끄기</button>
+        </div>
       </div>
       <ul id="course-list" class="course-list"><!-- JS로 채움 --></ul>
       <p id="search-empty" class="search__empty" hidden>결과 없음</p>
@@ -216,6 +219,28 @@
           </div>
         </div>
         <label class="tour__dontshow"><input type="checkbox" id="tour-dontshow" checked /> 다시 보지 않기</label>
+      </div>
+    </div>
+
+    <!-- 대회별 커뮤니티(댓글) -->
+    <div id="community" class="community" hidden>
+      <div class="community__backdrop" data-cm-close></div>
+      <div class="community__card" role="dialog" aria-modal="true" aria-label="대회 커뮤니티">
+        <div class="community__head">
+          <div>
+            <h2 class="community__title" id="cm-title">대회 커뮤니티</h2>
+            <span class="community__sub"><span id="cm-count">0</span>개의 댓글</span>
+          </div>
+          <button type="button" class="community__x" data-cm-close aria-label="닫기">&times;</button>
+        </div>
+        <div id="cm-list" class="community__list"></div>
+        <form id="cm-form" class="community__form" hidden>
+          <input id="cm-input" class="community__input" type="text" maxlength="1000" placeholder="댓글을 남겨보세요" autocomplete="off" />
+          <button type="submit" class="community__send">등록</button>
+        </form>
+        <div id="cm-note" class="community__note" hidden>
+          댓글을 남기려면 <button type="button" id="cm-login" class="community__loginlink">로그인</button> 하세요.
+        </div>
       </div>
     </div>
 

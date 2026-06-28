@@ -823,13 +823,24 @@ function buildSidebar(setVisible, overlays, map, naver) {
     li.className = "course-item";
     li.innerHTML =
       '<div class="course-item__head">' +
-      '  <div class="course-item__name">' + event.name + "</div>" +
-      '  <div class="course-item__meta">' +
-      '    <span class="course-item__sub">' + event.place + "</span>" +
-      '    <span class="course-item__sub">' + event.date + "</span>" +
+      '  <div class="course-item__main">' +
+      '    <div class="course-item__name">' + event.name + "</div>" +
+      '    <div class="course-item__meta">' +
+      '      <span class="course-item__sub">' + event.place + "</span>" +
+      '      <span class="course-item__sub">' + event.date + "</span>" +
+      "    </div>" +
       "  </div>" +
+      '  <button type="button" class="course-bm" data-fav="' + escHtml(event.id) + '" aria-label="북마크" aria-pressed="false">' +
+      '    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>' +
+      "  </button>" +
       "</div>" +
       '<div class="variant-list"></div>';
+
+    // 카드 북마크 버튼 (카드 클릭 전파 막고 토글)
+    const bm = li.querySelector(".course-bm");
+    bm.classList.toggle("is-on", FAVORITES.has(event.id));
+    bm.setAttribute("aria-pressed", String(FAVORITES.has(event.id)));
+    bm.addEventListener("click", (e) => { e.stopPropagation(); toggleFavorite(event.id); });
 
     const vlist = li.querySelector(".variant-list");
     const variants = [];
@@ -1013,11 +1024,12 @@ function setupSearch(items, setVisible) {
   }
 
   input.addEventListener("input", apply);
+  onFavChange = apply; // 북마크 토글 시 '북마크만 보기' 즉시 반영
 
-  // 즐겨찾기만 보기 토글
+  // 북마크만 보기 토글
   const favOnlyBtn = document.getElementById("fav-only");
   if (favOnlyBtn) favOnlyBtn.addEventListener("click", () => {
-    if (!CURRENT_USER && !f.favOnly) { alert("로그인하면 즐겨찾기한 대회만 모아볼 수 있어요."); return; }
+    if (!CURRENT_USER && !f.favOnly) { alert("로그인하면 북마크한 대회만 모아볼 수 있어요."); return; }
     f.favOnly = !f.favOnly;
     favOnlyBtn.classList.toggle("is-on", f.favOnly);
     favOnlyBtn.setAttribute("aria-pressed", String(f.favOnly));
@@ -1168,8 +1180,8 @@ function iwContent(event, v) {
     "</div>" +
     '<div class="iw__actions">' +
     '<button type="button" class="iw__fav' + (FAVORITES.has(event.id) ? " is-on" : "") + '" data-fav="' + escHtml(event.id) + '" aria-pressed="' + FAVORITES.has(event.id) + '">' +
-    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.6-9.3-9C1.2 9.2 2.5 6 5.6 6c1.9 0 3.2 1.1 4.4 2.6C11.2 7.1 12.5 6 14.4 6c3.1 0 4.4 3.2 2.9 6C19 16.4 12 21 12 21z"/></svg>' +
-    "<span>즐겨찾기</span></button>" +
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>' +
+    "<span>북마크</span></button>" +
     '<button type="button" class="iw__comments" data-comments="' + escHtml(event.id) + '" data-name="' + escHtml(event.name) + '">' +
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5z"/></svg>' +
     "<span>댓글</span></button>" +
@@ -1257,26 +1269,32 @@ function setupGpxDownload() {
 }
 setupGpxDownload();
 
-// ── 즐겨찾기 토글 + 댓글 열기 (말풍선 안 버튼, 위임) ────────────
+// 모든 북마크 버튼([data-fav])의 켜짐 상태를 FAVORITES에 맞춰 갱신
+let onFavChange = null; // '북마크만 보기' 필터 재적용 콜백 (buildSidebar에서 등록)
+function syncFavButtons() {
+  document.querySelectorAll("[data-fav]").forEach((b) => {
+    const on = FAVORITES.has(b.getAttribute("data-fav"));
+    b.classList.toggle("is-on", on);
+    b.setAttribute("aria-pressed", String(on));
+  });
+}
+// 북마크 토글 (말풍선·카드 공용). 성공 시 FAVORITES 갱신 + 모든 버튼 동기화
+function toggleFavorite(eid) {
+  if (!CURRENT_USER) { alert("로그인하면 북마크를 저장할 수 있어요."); return; }
+  fetch("/api/favorites/" + encodeURIComponent(eid), { method: "POST" })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => {
+      if (!j) return;
+      if (j.on) FAVORITES.add(eid); else FAVORITES.delete(eid);
+      syncFavButtons();
+      if (onFavChange) onFavChange();
+    });
+}
+// ── 북마크 토글 + 댓글 열기 (말풍선 안 버튼, 위임) ──────────────
 function setupFavAndComments() {
   document.addEventListener("click", (e) => {
     const fav = e.target.closest && e.target.closest(".iw__fav");
-    if (fav) {
-      e.preventDefault();
-      if (!CURRENT_USER) { alert("로그인하면 즐겨찾기를 저장할 수 있어요."); return; }
-      const eid = fav.getAttribute("data-fav");
-      fav.disabled = true;
-      fetch("/api/favorites/" + encodeURIComponent(eid), { method: "POST" })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((j) => {
-          if (!j) return;
-          if (j.on) FAVORITES.add(eid); else FAVORITES.delete(eid);
-          fav.classList.toggle("is-on", j.on);
-          fav.setAttribute("aria-pressed", String(j.on));
-        })
-        .finally(() => { fav.disabled = false; });
-      return;
-    }
+    if (fav) { e.preventDefault(); toggleFavorite(fav.getAttribute("data-fav")); return; }
     const cm = e.target.closest && e.target.closest(".iw__comments");
     if (cm) {
       e.preventDefault();
@@ -1465,9 +1483,10 @@ function setupAuth() {
       document.getElementById("auth-name").textContent = user.name || "사용자";
       const av = document.getElementById("auth-avatar");
       if (user.picture) { av.src = user.picture; av.hidden = false; } else { av.hidden = true; }
-      // 내 즐겨찾기 로드
+      // 내 북마크 로드 → 버튼 상태 반영
       fetch("/api/favorites").then((r) => r.json()).then((j) => {
         (j.favorites || []).forEach((id) => FAVORITES.add(id));
+        syncFavButtons();
       }).catch(() => {});
     })
     .catch(() => {});

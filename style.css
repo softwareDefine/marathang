@@ -720,8 +720,19 @@ html, body {
 .course-item:hover { border-color: #3a414f; }
 
 /* 카드 헤드(대회명/장소/일정) */
-.course-item__head { padding: 11px 14px 8px; }
+.course-item__head { padding: 11px 14px 8px; display: flex; align-items: flex-start; gap: 8px; }
+.course-item__main { flex: 1; min-width: 0; }
 .course-item__name { font-size: 14px; font-weight: 600; line-height: 1.3; }
+/* 카드 북마크 버튼 */
+.course-bm {
+  flex: none; width: 30px; height: 30px; padding: 0; margin: -2px -4px 0 0;
+  display: grid; place-items: center; border: 0; background: transparent; cursor: pointer;
+  color: var(--muted);
+}
+.course-bm svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+.course-bm:hover { color: var(--text); }
+.course-bm.is-on { color: var(--accent); }
+.course-bm.is-on svg { fill: var(--accent); stroke: var(--accent); }
 .course-item__meta {
   margin-top: 5px;
   display: flex;

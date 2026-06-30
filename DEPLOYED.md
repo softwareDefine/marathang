@@ -19,7 +19,7 @@
 
 ## 코드 갱신 시 (재배포)
 ```bash
-powershell Compress-Archive -Path lambda.js,server.js,index.html,app.js,style.css,data.js,admin.html,admin.js,admin.css,courses.json -DestinationPath _function.zip -Force
+powershell Compress-Archive -Path lambda.js,server.js,auth.js,index.html,app.js,style.css,data.js,admin.html,admin.js,admin.css,regions.json,courses.json -DestinationPath _function.zip -Force
 aws lambda update-function-code --function-name marathang --zip-file fileb://_function.zip --region ap-northeast-2 --profile marathang
 ```
 

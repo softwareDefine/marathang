@@ -26,7 +26,7 @@ jobs:
       # ── CI: 문법 검사 ──
       - name: Syntax check
         run: |
-          for f in server.js lambda.js app.js admin.js data.js; do
+          for f in server.js lambda.js auth.js app.js admin.js data.js; do
             node --check "$f" && echo "ok: $f"
           done
 
@@ -42,10 +42,10 @@ jobs:
       - name: Package
         run: |
           zip -j function.zip \
-            lambda.js server.js \
+            lambda.js server.js auth.js \
             index.html app.js style.css data.js \
             admin.html admin.js admin.css \
-            courses.json
+            regions.json courses.json
           ls -la function.zip
 
       # ── CD: Lambda 코드 업데이트 ──

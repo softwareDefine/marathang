@@ -703,23 +703,25 @@ html, body {
 }
 .filters__reset:hover { border-color: var(--accent); }
 
-.course-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.course-list { list-style: none; margin: 0; padding: 0; display: block; }
 .course-item[hidden] { display: none; }
 
-/* 대회 카드 */
+/* 대회 행 (표 형태: 너비 100% + 행 구분선) */
 .course-item {
   position: relative;
   display: flex;
   flex-direction: column;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  overflow: hidden;
-  transition: border-color 0.15s;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  transition: background 0.15s;
 }
-.course-item:hover { border-color: #3a414f; }
+.course-item:first-child { border-top: 1px solid var(--line); }
+.course-item:hover { background: var(--panel-2); }
 
-/* 카드 헤드(대회명/장소/일정) */
+/* 행 헤드(대회명/장소/일정) */
 .course-item__head { padding: 11px 14px 8px; display: flex; align-items: flex-start; gap: 8px; }
 .course-item__main { flex: 1; min-width: 0; }
 .course-item__name { font-size: 14px; font-weight: 600; line-height: 1.3; }

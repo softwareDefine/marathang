@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <rect width="32" height="32" rx="7" fill="#ffffff"/>
-  <text x="16" y="24" text-anchor="middle"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140" width="140" height="140">
+  <rect width="140" height="140" rx="31" fill="#ffffff"/>
+  <text x="70" y="105" text-anchor="middle"
         font-family="'Arial Black', Arial, Helvetica, sans-serif"
-        font-size="21" font-weight="900" font-style="italic"
-        letter-spacing="-1">
+        font-size="92" font-weight="900" font-style="italic"
+        letter-spacing="-4">
     <tspan fill="#16181d">m</tspan><tspan fill="#E8413A">t</tspan>
   </text>
 </svg>

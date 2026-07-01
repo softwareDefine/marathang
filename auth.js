@@ -154,9 +154,13 @@ async function handleAuth({ method, pathname, query, headers }, store) {
       const uid = provider + ":" + prof.providerId;
       const users = await store.readUsers();
       const now = Date.now();
+      const existing = users[uid] || {};
+      // 기존 유저 필드(북마크 등) 보존 + 프로필/lastLogin만 갱신.
+      // (통째로 덮어쓰면 재로그인 때 favorites가 유실됨)
       users[uid] = {
+        ...existing,
         id: uid, provider, providerId: prof.providerId, name: prof.name, picture: prof.picture,
-        createdAt: (users[uid] && users[uid].createdAt) || now, lastLogin: now,
+        createdAt: existing.createdAt || now, lastLogin: now,
       };
       await store.writeUsers(users);
 

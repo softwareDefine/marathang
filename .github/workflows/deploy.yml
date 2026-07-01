@@ -45,7 +45,7 @@ jobs:
             lambda.js server.js auth.js \
             index.html app.js style.css data.js \
             admin.html admin.js admin.css \
-            regions.json courses.json
+            favicon.svg regions.json courses.json
           ls -la function.zip
 
       # ── CD: Lambda 코드 업데이트 ──

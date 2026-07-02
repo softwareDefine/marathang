@@ -900,6 +900,8 @@ html:not([data-theme="light"]) .map img[src*="/styles/basic/"] {
 .cm-item__del:hover { color: var(--accent); }
 .cm-item__text { font-size: 14px; line-height: 1.5; color: var(--text); white-space: pre-wrap; word-break: break-word; }
 .community__form { display: flex; gap: 8px; margin-top: 14px; }
+/* display:flex가 hidden 속성을 덮어써 로그아웃 상태에서도 폼이 보이던 문제 (CLAUDE.md 함정) */
+.community__form[hidden] { display: none; }
 .community__input {
   flex: 1; height: 42px; padding: 0 14px; border-radius: 10px;
   background: var(--panel-2); border: 1px solid var(--line); color: var(--text); font: inherit; font-size: 14px;

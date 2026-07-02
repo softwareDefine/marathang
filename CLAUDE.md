@@ -63,6 +63,7 @@ SDK는 `submodules=panorama`로 로드 — 거리뷰(파노라마) 기능 때문
 
 - **`[hidden]` + `display:flex/grid` 충돌** — HTML `hidden` 속성은 `display:none`이지만, CSS에서 `display:flex` 등을 주면 `hidden`을 덮어써서 안 숨겨짐. `.map-fallback`, `.course-item`, `.dist-readout`, 어드민 `.login`·`.vrow__draw`에서 각각 `[hidden] { display: none; }` 명시로 해결. 새 요소 숨길 때 주의.
 - **`bounds.isEmpty()` 없음** — 신규 네이버 SDK엔 `LatLngBounds.isEmpty()`가 없어 throw됨. `if (COURSES.length)`로 대체.
+- **InfoWindow(말풍선)가 클릭 버블 전파를 막음** — 네이버 지도 InfoWindow는 내부 클릭에 `stopPropagation()`을 걸어, `document`에 **버블 단계**로 단 위임 리스너는 발화 안 함. 말풍선 안 버튼(`.iw__fav` 북마크·`.iw__comments` 댓글·`.iw__gpx`)은 위임 리스너를 **캡처 단계**(`addEventListener("click", fn, true)`)로 달아야 잡힌다. (`<a href>`는 기본 동작이라 무관.)
 - **다크 지도 필터가 위성/오버레이 반전** — 다크 타일 필터는 `img[src*="/styles/basic/"]`로 좁혀서 일반 지도 타일에만 적용. 위성사진·마커·코스선·말풍선은 색 유지.
 - 모든 떠 있는 패널 색은 테마 변수로 빼야 라이트/다크 둘 다 정상.
 

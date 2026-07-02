@@ -1361,11 +1361,20 @@ function loadComments(eventId) {
         const mine = CURRENT_USER && CURRENT_USER.id === c.uid;
         const li = document.createElement("div");
         li.className = "cm-item";
+        // 프로필 사진(없거나 로드 실패 시 이름 첫 글자로 대체)
+        const initial = escHtml((c.name || "?").trim().slice(0, 1) || "?");
+        const avatar =
+          '<div class="cm-item__avatar"><span class="cm-item__ph">' + initial + "</span>" +
+          (c.picture ? '<img src="' + escHtml(c.picture) + '" alt="" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'">' : "") +
+          "</div>";
         li.innerHTML =
+          avatar +
+          '<div class="cm-item__body">' +
           '<div class="cm-item__head"><span class="cm-item__name">' + escHtml(c.name) + "</span>" +
           '<span class="cm-item__time">' + timeAgo(c.ts) + "</span>" +
           (mine ? '<button type="button" class="cm-item__del" title="삭제">삭제</button>' : "") +
-          "</div><div class=\"cm-item__text\">" + escHtml(c.text) + "</div>";
+          "</div><div class=\"cm-item__text\">" + escHtml(c.text) + "</div>" +
+          "</div>";
         if (mine) li.querySelector(".cm-item__del").addEventListener("click", () => {
           if (!confirm("이 댓글을 삭제할까요?")) return;
           fetch("/api/comments/" + encodeURIComponent(eventId) + "/" + encodeURIComponent(c.id), { method: "DELETE" })

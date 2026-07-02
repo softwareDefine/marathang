@@ -292,7 +292,7 @@ async function handleApi({ method, pathname, headers, body }) {
     if (text.length > COMMENT_LEN) text = text.slice(0, COMMENT_LEN);
     const all = await store.readComments();
     const list = Array.isArray(all[id]) ? all[id] : [];
-    const item = { id: "c" + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36), uid: u.uid, name: u.name || "사용자", text, ts: Date.now() };
+    const item = { id: "c" + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36), uid: u.uid, name: u.name || "사용자", picture: u.picture || "", text, ts: Date.now() };
     list.push(item);
     all[id] = list.slice(-COMMENT_MAX);
     await store.writeComments(all);

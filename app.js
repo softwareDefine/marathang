@@ -818,15 +818,26 @@ function buildSidebar(setVisible, overlays, map, naver) {
     toggleAllBtn.textContent = anyOn ? "전체 끄기" : "전체 켜기";
   }
 
+  // 인기 랭킹: 조회수 상위 대회에 🔥 배지 (조회수 0은 제외). VIEWS는 이 시점에 로드 완료.
+  const RANK_TOP = 5;
+  POPULAR_RANK = {};
+  EVENTS.map((e) => ({ id: e.id, v: VIEWS[e.id] || 0 }))
+    .filter((x) => x.v > 0)
+    .sort((a, b) => b.v - a.v)
+    .slice(0, RANK_TOP)
+    .forEach((x, i) => { POPULAR_RANK[x.id] = i + 1; });
+
   EVENTS.forEach((event) => {
     const li = document.createElement("li");
     li.className = "course-item";
     const dd = ddayInfo(event.date);
     const ddBadge = dd ? '<span class="course-dday course-dday--' + dd.cls + '">' + dd.text + "</span>" : "";
+    const rank = POPULAR_RANK[event.id];
+    const rankBadge = rank ? '<span class="course-rank" title="인기 ' + rank + '위">' + FLAME_SVG + rank + "</span> " : "";
     li.innerHTML =
       '<div class="course-item__head">' +
       '  <div class="course-item__main">' +
-      '    <div class="course-item__name">' + event.name + "</div>" +
+      '    <div class="course-item__name">' + rankBadge + event.name + "</div>" +
       '    <div class="course-item__meta">' +
       '      <span class="course-item__sub">' + event.place + "</span>" +
       '      <span class="course-item__sub">' + event.date + "</span>" +
@@ -1210,13 +1221,18 @@ function ddayInfo(dateStr) {
   return { text: "D-" + days, cls: days <= 7 ? "soon" : days <= 30 ? "near" : "far", days };
 }
 
-// ── 조회수 ──────────────────────────────────────────────────────
+// ── 조회수 / 인기 랭킹 ──────────────────────────────────────────
 const VIEWS = {}; // eventId -> count
+let POPULAR_RANK = {}; // eventId -> 인기 순위(1-based). buildSidebar에서 조회수로 계산
+// 불꽃 아이콘 (인라인 SVG — 장식 이모지 금지 규칙)
+const FLAME_SVG = '<svg class="flame" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2c.6 3-1.4 4.6-2.5 6.6-.8 1.5-.3 3.2 1.5 3.2 1.1 0 1.9-.9 2-2.1 1.6 1.4 2.5 3.4 2.5 5.6a6 6 0 0 1-12 0c0-3.6 2.6-6.1 4.1-8.6C9.8 7.6 12 5 13 2z"/></svg>';
 // 말풍선(InfoWindow) 내용 빌더 (조회수 포함). 열 때 setContent로 갱신용.
 function iwContent(event, v) {
   const views = VIEWS[event.id] || 0;
   const dd = ddayInfo(event.date);
   const ddBadge = dd ? ' <span class="iw-dday iw-dday--' + dd.cls + '">' + dd.text + "</span>" : "";
+  const rank = POPULAR_RANK[event.id];
+  const rankRow = rank ? '<div class="iw__row"><span class="iw__label">인기</span><span class="iw-rank">' + FLAME_SVG + " " + rank + "위</span></div>" : "";
   return '<div class="iw">' +
     '<b class="iw__title">' + event.name + "</b>" +
     '<div class="iw__rows">' +
@@ -1225,6 +1241,7 @@ function iwContent(event, v) {
     '<div class="iw__row"><span class="iw__label">일정</span>' + event.date + ddBadge + "</div>" +
     '<div class="iw__row"><span class="iw__label">참가비</span>' + event.fee + "</div>" +
     '<div class="iw__row"><span class="iw__label">조회</span>' + views + "</div>" +
+    rankRow +
     "</div>" +
     '<div class="iw__actions">' +
     '<button type="button" class="iw__fav' + (FAVORITES.has(event.id) ? " is-on" : "") + '" data-fav="' + escHtml(event.id) + '" aria-pressed="' + FAVORITES.has(event.id) + '">' +

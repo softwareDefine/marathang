@@ -1029,7 +1029,6 @@ function setupSearch(items, setVisible) {
   // 북마크만 보기 토글
   const favOnlyBtn = document.getElementById("fav-only");
   if (favOnlyBtn) favOnlyBtn.addEventListener("click", () => {
-    if (!CURRENT_USER && !f.favOnly) { alert("로그인하면 북마크한 대회만 모아볼 수 있어요."); return; }
     f.favOnly = !f.favOnly;
     favOnlyBtn.classList.toggle("is-on", f.favOnly);
     favOnlyBtn.setAttribute("aria-pressed", String(f.favOnly));
@@ -1164,6 +1163,16 @@ function loadCourses() {
 let CURRENT_USER = null;       // { id, name, picture, provider } | null
 const FAVORITES = new Set();   // 내 즐겨찾기 eventId
 
+// 로그아웃 상태 북마크는 브라우저(localStorage)에 저장 → 로그인 시 서버 계정으로 병합
+const FAV_LS_KEY = "marathang_favorites";
+function loadLocalFavs() {
+  try { const a = JSON.parse(localStorage.getItem(FAV_LS_KEY) || "[]"); return Array.isArray(a) ? a : []; }
+  catch { return []; }
+}
+function saveLocalFavs() {
+  try { localStorage.setItem(FAV_LS_KEY, JSON.stringify(Array.from(FAVORITES))); } catch {}
+}
+
 // ── 조회수 ──────────────────────────────────────────────────────
 const VIEWS = {}; // eventId -> count
 // 말풍선(InfoWindow) 내용 빌더 (조회수 포함). 열 때 setContent로 갱신용.
@@ -1281,7 +1290,14 @@ function syncFavButtons() {
 }
 // 북마크 토글 (말풍선·카드 공용). 성공 시 FAVORITES 갱신 + 모든 버튼 동기화
 function toggleFavorite(eid) {
-  if (!CURRENT_USER) { alert("로그인하면 북마크를 저장할 수 있어요."); return; }
+  if (!CURRENT_USER) {
+    // 로그아웃: 서버 호출 없이 localStorage에 저장
+    if (FAVORITES.has(eid)) FAVORITES.delete(eid); else FAVORITES.add(eid);
+    saveLocalFavs();
+    syncFavButtons();
+    if (onFavChange) onFavChange();
+    return;
+  }
   fetch("/api/favorites/" + encodeURIComponent(eid), { method: "POST" })
     .then((r) => (r.ok ? r.json() : null))
     .then((j) => {
@@ -1481,16 +1497,36 @@ function setupAuth() {
   fetch("/auth/me")
     .then((r) => r.json())
     .then(({ user }) => {
-      if (!user) return;
+      if (!user) {
+        // 로그아웃: localStorage에 저장된 북마크 로드
+        loadLocalFavs().forEach((id) => FAVORITES.add(id));
+        syncFavButtons();
+        if (onFavChange) onFavChange();
+        return;
+      }
       CURRENT_USER = user;
       loginBtn.hidden = true; closeModal(); userBox.hidden = false;
       document.getElementById("auth-name").textContent = user.name || "사용자";
       const av = document.getElementById("auth-avatar");
       if (user.picture) { av.src = user.picture; av.hidden = false; } else { av.hidden = true; }
-      // 내 북마크 로드 → 버튼 상태 반영
+      // 서버 북마크 로드 + 로그아웃 때 로컬에 쌓아둔 북마크를 서버 계정으로 병합
       fetch("/api/favorites").then((r) => r.json()).then((j) => {
-        (j.favorites || []).forEach((id) => FAVORITES.add(id));
+        const server = new Set(j.favorites || []);
+        server.forEach((id) => FAVORITES.add(id));
         syncFavButtons();
+        if (onFavChange) onFavChange();
+        const toMerge = loadLocalFavs().filter((id) => !server.has(id));
+        if (!toMerge.length) { try { localStorage.removeItem(FAV_LS_KEY); } catch {} return; }
+        Promise.all(toMerge.map((id) =>
+          fetch("/api/favorites/" + encodeURIComponent(id), { method: "POST" })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((res) => { if (res && res.on) FAVORITES.add(id); })
+            .catch(() => {})
+        )).then(() => {
+          try { localStorage.removeItem(FAV_LS_KEY); } catch {}
+          syncFavButtons();
+          if (onFavChange) onFavChange();
+        });
       }).catch(() => {});
     })
     .catch(() => {});

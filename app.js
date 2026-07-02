@@ -1258,6 +1258,7 @@ function downloadGpx(filename, text) {
 }
 // InfoWindow 안의 'GPX 다운로드' 링크 (위임 — 말풍선은 열릴 때 DOM 생성됨)
 function setupGpxDownload() {
+  // InfoWindow는 클릭 버블 전파를 막으므로 캡처 단계로 위임(위 setupFavAndComments 참고)
   document.addEventListener("click", (e) => {
     const a = e.target.closest && e.target.closest(".iw__gpx");
     if (!a) return;
@@ -1265,7 +1266,7 @@ function setupGpxDownload() {
     const rec = GPX_INDEX[a.getAttribute("data-vid")];
     if (!rec || !rec.path || rec.path.length < 2) { alert("내려받을 경로가 없습니다."); return; }
     downloadGpx(gpxFilename(rec.name), buildGpx(rec.name, rec.path));
-  });
+  }, true);
 }
 setupGpxDownload();
 
@@ -1292,6 +1293,9 @@ function toggleFavorite(eid) {
 }
 // ── 북마크 토글 + 댓글 열기 (말풍선 안 버튼, 위임) ──────────────
 function setupFavAndComments() {
+  // 네이버 지도 InfoWindow는 내부 클릭의 버블 전파를 stopPropagation으로 막는다.
+  // → document 위임 리스너를 버블 단계로 달면 말풍선 안 북마크·댓글 버튼이 안 먹음.
+  //   캡처 단계(3번째 인자 true)로 달아야 전파 차단 전에 잡힌다.
   document.addEventListener("click", (e) => {
     const fav = e.target.closest && e.target.closest(".iw__fav");
     if (fav) { e.preventDefault(); toggleFavorite(fav.getAttribute("data-fav")); return; }
@@ -1300,7 +1304,7 @@ function setupFavAndComments() {
       e.preventDefault();
       openCommunity(cm.getAttribute("data-comments"), cm.getAttribute("data-name"));
     }
-  });
+  }, true);
 }
 setupFavAndComments();
 

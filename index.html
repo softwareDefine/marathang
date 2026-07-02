@@ -183,12 +183,13 @@
 
     <aside class="sidebar">
       <div class="sidebar__bar">
-        <h2 class="sidebar__title">코스 목록</h2>
+        <h2 class="sidebar__title">코스 목록<span id="course-count" class="sidebar__count"></span></h2>
         <div class="sidebar__bar-btns">
           <button id="fav-only" class="toggle-all" type="button" aria-pressed="false">북마크</button>
           <button id="toggle-all" class="toggle-all" type="button">전체 끄기</button>
         </div>
       </div>
+      <div id="month-timeline" class="month-timeline"><!-- JS로 채움: 월 칩 --></div>
       <ul id="course-list" class="course-list"><!-- JS로 채움 --></ul>
       <p id="search-empty" class="search__empty" hidden>결과 없음</p>
       <p class="sidebar__note">

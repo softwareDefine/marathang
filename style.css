@@ -745,6 +745,38 @@ html, body {
   color: var(--muted);
 }
 
+/* D-day 배지 (카드) */
+.course-dday {
+  flex: none; margin-left: auto; padding: 1px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; line-height: 1.7; white-space: nowrap;
+}
+.course-dday--soon { background: var(--accent); color: #fff; }               /* D-7 이내 */
+.course-dday--near { background: rgba(232, 65, 58, 0.16); color: var(--accent); }
+.course-dday--far { background: var(--panel-2); color: var(--muted); }
+.course-dday--today { background: #16a34a; color: #fff; }
+.course-dday--done { background: var(--panel-2); color: var(--muted); opacity: 0.65; }
+
+/* D-day 배지 (말풍선) */
+.iw-dday { display: inline-block; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.iw-dday--soon { background: var(--accent); color: #fff; }
+.iw-dday--near { background: rgba(232, 65, 58, 0.16); color: var(--accent); }
+.iw-dday--today { background: #16a34a; color: #fff; }
+.iw-dday--far, .iw-dday--done { background: var(--iw-bg); color: var(--muted); border: 1px solid var(--line); }
+
+/* 월 타임라인 칩 */
+.month-timeline { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; }
+.month-timeline::-webkit-scrollbar { display: none; }
+.month-chip {
+  flex: none; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line);
+  background: transparent; color: var(--muted); font-family: inherit; font-size: 13px;
+  font-weight: 600; cursor: pointer; white-space: nowrap; transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.month-chip:hover { color: var(--text); border-color: var(--accent); }
+.month-chip.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* 사이드바 코스 개수 */
+.sidebar__count { margin-left: 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
+
 /* 거리별 코스 — 칩 가로 배치 (클릭 = 표시 on/off) */
 .course-item__head { cursor: pointer; }
 .variant-list {

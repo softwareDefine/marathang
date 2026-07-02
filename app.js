@@ -821,6 +821,8 @@ function buildSidebar(setVisible, overlays, map, naver) {
   EVENTS.forEach((event) => {
     const li = document.createElement("li");
     li.className = "course-item";
+    const dd = ddayInfo(event.date);
+    const ddBadge = dd ? '<span class="course-dday course-dday--' + dd.cls + '">' + dd.text + "</span>" : "";
     li.innerHTML =
       '<div class="course-item__head">' +
       '  <div class="course-item__main">' +
@@ -828,6 +830,7 @@ function buildSidebar(setVisible, overlays, map, naver) {
       '    <div class="course-item__meta">' +
       '      <span class="course-item__sub">' + event.place + "</span>" +
       '      <span class="course-item__sub">' + event.date + "</span>" +
+      ddBadge +
       "    </div>" +
       "  </div>" +
       '  <button type="button" class="course-bm" data-fav="' + escHtml(event.id) + '" aria-label="북마크" aria-pressed="false">' +
@@ -979,7 +982,7 @@ function setupSearch(items, setVisible) {
   if (!input) return;
 
   // 필터 상태
-  const f = { regions: new Set(), distLo: 0, distHi: 40, feeLo: 0, feeHi: 100000, scale: "all", dateFrom: "", dateTo: "", favOnly: false };
+  const f = { regions: new Set(), distLo: 0, distHi: 40, feeLo: 0, feeHi: 100000, scale: "all", dateFrom: "", dateTo: "", favOnly: false, month: "" };
 
   function passes(ev) {
     if (f.favOnly && !FAVORITES.has(ev.id)) return false;
@@ -1001,6 +1004,7 @@ function setupSearch(items, setVisible) {
       if (f.scale === "m" && !(s >= 1000 && s < 5000)) return false;
       if (f.scale === "l" && !(s >= 5000)) return false;
     }
+    if (f.month && (ev.date || "").slice(0, 7) !== f.month) return false;
     if ((f.dateFrom || f.dateTo) && !ev.date) return false;
     if (f.dateFrom && ev.date < f.dateFrom) return false;
     if (f.dateTo && ev.date > f.dateTo) return false;
@@ -1021,10 +1025,32 @@ function setupSearch(items, setVisible) {
       if (match) shown++;
     });
     empty.hidden = shown !== 0;
+    const cc = document.getElementById("course-count");
+    if (cc) cc.textContent = shown === items.length ? "" : shown + "개";
   }
 
   input.addEventListener("input", apply);
   onFavChange = apply; // 북마크 토글 시 '북마크만 보기' 즉시 반영
+
+  // 월 타임라인 칩 (호갱노노 스타일 빠른 날짜 필터). 데이터에 있는 월만 표시.
+  const monthWrap = document.getElementById("month-timeline");
+  if (monthWrap) {
+    const months = Array.from(new Set(EVENTS.map((e) => (e.date || "").slice(0, 7)).filter(Boolean))).sort();
+    const mkChip = (val, label) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "month-chip" + (val === "" ? " is-on" : "");
+      b.textContent = label;
+      b.addEventListener("click", () => {
+        f.month = val;
+        monthWrap.querySelectorAll(".month-chip").forEach((c) => c.classList.toggle("is-on", c === b));
+        apply();
+      });
+      return b;
+    };
+    monthWrap.appendChild(mkChip("", "전체"));
+    months.forEach((m) => monthWrap.appendChild(mkChip(m, Number(m.slice(5, 7)) + "월")));
+  }
 
   // 북마크만 보기 토글
   const favOnlyBtn = document.getElementById("fav-only");
@@ -1173,17 +1199,30 @@ function saveLocalFavs() {
   try { localStorage.setItem(FAV_LS_KEY, JSON.stringify(Array.from(FAVORITES))); } catch {}
 }
 
+// 대회 날짜(YYYY-MM-DD) → D-day 배지 정보. 지난 대회는 "종료".
+function ddayInfo(dateStr) {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr + "T00:00:00");
+  const days = Math.round((target - today) / 86400000);
+  if (days < 0) return { text: "종료", cls: "done", days };
+  if (days === 0) return { text: "D-DAY", cls: "today", days };
+  return { text: "D-" + days, cls: days <= 7 ? "soon" : days <= 30 ? "near" : "far", days };
+}
+
 // ── 조회수 ──────────────────────────────────────────────────────
 const VIEWS = {}; // eventId -> count
 // 말풍선(InfoWindow) 내용 빌더 (조회수 포함). 열 때 setContent로 갱신용.
 function iwContent(event, v) {
   const views = VIEWS[event.id] || 0;
+  const dd = ddayInfo(event.date);
+  const ddBadge = dd ? ' <span class="iw-dday iw-dday--' + dd.cls + '">' + dd.text + "</span>" : "";
   return '<div class="iw">' +
     '<b class="iw__title">' + event.name + "</b>" +
     '<div class="iw__rows">' +
     '<div class="iw__row"><span class="iw__label">장소</span>' + event.place + "</div>" +
     '<div class="iw__row"><span class="iw__label">거리</span>' + v.distance + "</div>" +
-    '<div class="iw__row"><span class="iw__label">일정</span>' + event.date + "</div>" +
+    '<div class="iw__row"><span class="iw__label">일정</span>' + event.date + ddBadge + "</div>" +
     '<div class="iw__row"><span class="iw__label">참가비</span>' + event.fee + "</div>" +
     '<div class="iw__row"><span class="iw__label">조회</span>' + views + "</div>" +
     "</div>" +
